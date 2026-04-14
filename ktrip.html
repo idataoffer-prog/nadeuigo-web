@@ -6883,10 +6883,14 @@ function buildSettingsPage(){
       overlay.remove();
       S.user = null;
       localStorage.clear();
-      // 기존 로그인 화면 제거 후 새로 표시
-      const existing = document.getElementById('login-screen');
-      if(existing) existing.remove();
-      buildLoginScreen();
+      // React Native로 로그아웃 메시지 전송
+      if(window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage('logout');
+      } else {
+        const existing = document.getElementById('login-screen');
+        if(existing) existing.remove();
+        buildLoginScreen();
+      }
     });
     css(confirm,{flex:'1',padding:'13px',borderRadius:'12px',border:'none',
       fontSize:'14px',fontWeight:'700',cursor:'pointer',background:'#ef4444',color:'#fff'});
@@ -6933,14 +6937,18 @@ function buildSettingsPage(){
       overlay.remove();
       S.user = null;
       localStorage.clear();
-      const existing2 = document.getElementById('login-screen');
-      if(existing2) existing2.remove();
       const toast=div('');css(toast,{position:'fixed',bottom:'100px',left:'50%',
         transform:'translateX(-50%)',background:'rgba(0,0,0,.75)',color:'#fff',
         padding:'10px 20px',borderRadius:'9999px',fontSize:'13px',fontWeight:'700',zIndex:'300'});
       setText(toast,'탈퇴가 완료되었어요. 이용해 주셔서 감사해요.');
       document.body.appendChild(toast);setTimeout(()=>toast.remove(),3000);
-      buildLoginScreen();
+      if(window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage('logout');
+      } else {
+        const existing2 = document.getElementById('login-screen');
+        if(existing2) existing2.remove();
+        buildLoginScreen();
+      }
     });
     css(withdrawConfirm,{flex:'1',padding:'13px',borderRadius:'12px',border:'none',
       fontSize:'14px',fontWeight:'700',cursor:'pointer',background:'#ef4444',color:'#fff'});
