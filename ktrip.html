@@ -8912,6 +8912,7 @@ render();
     const screen = document.getElementById('login-screen');
     if(screen) screen.remove();
     S.user = user;
+    localStorage.setItem('nadeuigo_user', JSON.stringify(user));
     render();
     // 환영 토스트
     const toast = document.createElement('div');
@@ -8971,8 +8972,18 @@ render();
     onLoginSuccess({uid:'id_'+id, name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
   }
 
-  // ── 앱 시작: 로그인 화면 표시
-  buildLoginScreen();
+  // ── 앱 시작: 로그인 상태 확인
+  const savedUser = localStorage.getItem('nadeuigo_user');
+  if(savedUser){
+    try{
+      S.user = JSON.parse(savedUser);
+      render();
+    } catch(e){
+      buildLoginScreen();
+    }
+  } else {
+    buildLoginScreen();
+  }
 
   document.addEventListener('touchstart',e=>{
     const t=e.touches[0];
