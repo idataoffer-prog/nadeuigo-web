@@ -536,7 +536,7 @@ body{display:flex;align-items:center;justify-content:center;}
 /* ── Bottom nav ── */
 .bottom-nav{
   position:absolute;
-  bottom:max(calc(env(safe-area-inset-bottom,20px) + 8px), 16px);
+  bottom:max(calc(env(safe-area-inset-bottom,20px) + 2px), 8px);
   left:0;right:0;
   display:flex;justify-content:center;
   padding:0 16px;z-index:40;pointer-events:none;
@@ -1620,7 +1620,7 @@ function buildHome(){
 
     const courseScroll=div('');css(courseScroll,{
       display:'flex',gap:'16px',overflowX:'auto',
-      padding:'0 20px 8px',scrollbarWidth:'none',
+      padding:'0 20px 8px 20px',scrollbarWidth:'none',
       scrollSnapType:'x mandatory',
     });
 
@@ -1690,44 +1690,6 @@ function buildHome(){
     ap(secCourse,courseScroll);
 
     // ── 2. 실시간 현장 요약
-    const secLive=div('');css(secLive,{background:'#fff',paddingTop:'24px',paddingBottom:'20px',borderTop:'1px solid #f1f5f9'});
-    const liveHd=div('section-hd');
-    const liveTitle=div('section-title');setText(liveTitle,'📡 현장 실시간 요약');
-    const liveSub=div('');css(liveSub,{fontSize:'12px',color:'#94a3b8',padding:'2px 20px 12px'});
-    setText(liveSub,'출발 전 꼭 확인하세요');
-    ap(liveHd,liveTitle);
-    ap(secLive,liveHd,liveSub);
-
-    const liveData=[
-      {name:'서울 벚꽃축제',crowd:'매우 혼잡',crowdColor:'#ef4444',crowdBg:'#fef2f2',parking:'주차 불가',bloom:'개화율 90%'},
-      {name:'진해 군항제',crowd:'보통 혼잡',crowdColor:'#f59e0b',crowdBg:'#fffbeb',parking:'주차 가능',bloom:'절정 진입 중'},
-      {name:'안동 탈춤축제',crowd:'여유',crowdColor:'#10b981',crowdBg:'#f0fdf4',parking:'주차 원활',bloom:'D-147일'},
-    ];
-    const liveStatusScroll=div('');css(liveStatusScroll,{display:'flex',gap:'12px',overflowX:'auto',padding:'0 20px 4px',scrollbarWidth:'none'});
-    liveData.forEach(l=>{
-      const card=div('');css(card,{
-        flexShrink:'0',width:'220px',background:'#f8fafc',borderRadius:'16px',
-        padding:'16px',border:'1px solid #f1f5f9',
-      });
-      const nm=div('');css(nm,{fontSize:'13px',fontWeight:'800',color:'#111',marginBottom:'10px'});setText(nm,l.name);
-      const rows=[
-        {icon:'👥',label:l.crowd,color:l.crowdColor,bg:l.crowdBg},
-        {icon:'🅿️',label:l.parking,color:'#374151',bg:'#f1f5f9'},
-        {icon:'🌸',label:l.bloom,color:'#374151',bg:'#f1f5f9'},
-      ];
-      rows.forEach(r=>{
-        const row=div('');css(row,{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'});
-        const chip=div('');css(chip,{fontSize:'11px',fontWeight:'700',color:r.color,
-          background:r.bg,padding:'3px 8px',borderRadius:'6px'});
-        setText(chip,r.icon+' '+r.label);
-        row.appendChild(chip);
-        card.appendChild(row);
-      });
-      ap(card,nm);
-      liveStatusScroll.appendChild(card);
-    });
-    ap(secLive,liveStatusScroll);
-
     // ── 3. 나를 위한 추천
     const secPersonal=div('');css(secPersonal,{background:'#fff',paddingTop:'24px',paddingBottom:'20px',borderTop:'1px solid #f1f5f9'});
     const personalHd=div('section-hd');
@@ -1819,7 +1781,7 @@ function buildHome(){
     });
     ap(secBest,sbHd,best3List);
 
-    ap(main,sec1,sec2,secDna,secBest,secCourse,secLive,secPersonal);
+    ap(main,sec1,sec2,secDna,secBest,secCourse,secPersonal);
 
   } else if(S.cat==='지역별'){
     const p=div('');css(p,{background:'#f8f8f6',minHeight:'100%',paddingBottom:'40px'});
