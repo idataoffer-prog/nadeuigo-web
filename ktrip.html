@@ -536,10 +536,10 @@ body{display:flex;align-items:center;justify-content:center;}
 /* ── Bottom nav ── */
 .bottom-nav{
   position:absolute;
-  bottom:max(calc(env(safe-area-inset-bottom,20px) + 2px), 8px);
+  bottom:0px;
   left:0;right:0;
   display:flex;justify-content:center;
-  padding:0 16px;z-index:40;pointer-events:none;
+  padding:0 16px 8px;z-index:40;pointer-events:none;
 }
 .nav-inner{
   width:100%;max-width:380px;height:60px;
@@ -1620,18 +1620,19 @@ function buildHome(){
 
     const courseScroll=div('');css(courseScroll,{
       display:'flex',gap:'16px',overflowX:'auto',
-      padding:'0 20px 8px 20px',scrollbarWidth:'none',
+      padding:'0 16px 8px 16px',scrollbarWidth:'none',
       scrollSnapType:'x mandatory',
+      justifyContent:'flex-start',
     });
 
     courses.forEach(c=>{
       const card=div('');css(card,{
-        flexShrink:'0',width:'220px',
+        flexShrink:'0',width:'60vw',maxWidth:'240px',
         borderRadius:'20px',overflow:'hidden',
         cursor:'pointer',
         background:'#fff',
         boxShadow:'6px 6px 16px rgba(0,0,0,.08), -2px -2px 8px rgba(255,255,255,.9)',
-        scrollSnapAlign:'start',
+        scrollSnapAlign:'center',
         transition:'transform .2s',
       });
       card.onmousedown=()=>css(card,{transform:'scale(.97)'});
