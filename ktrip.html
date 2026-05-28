@@ -680,6 +680,11 @@ body{display:flex;align-items:center;justify-content:center;}
 .review-ta{width:100%;height:180px;background:#f8fafc;border-radius:22px;padding:20px;font-size:13px;border:1.5px solid transparent;resize:none;line-height:1.7;color:#0f172a;font-family:inherit;transition:border-color .2s;outline:none;}
 .review-ta:focus{border-color:#bfdbfe;background:#fff;}
 </style>
+<!-- Firebase SDK (compat 버전 - 전역 firebase 객체 사용) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -3817,6 +3822,14 @@ function buildDetail(){
     fill:S.likedFests.includes(f.id)?'#ef4444':'none'});
   heartB.appendChild(heartIco);
   ap(hdr,backB,heartB);
+
+  // 관리자 모드: 편집 버튼 추가
+  if(window.IS_ADMIN && f.docId){
+    const editB=btn('icon-btn','',()=>window.openAdminEdit(f.docId));
+    editB.innerHTML='✏️';
+    css(editB,{fontSize:'18px'});
+    ap(hdr,editB);
+  }
 
   const body=div('scroll-area');css(body,{background:'#fff',paddingBottom:'74px'});
 
@@ -9193,7 +9206,311 @@ function buildNotifPanel(){
 
 // 초기 히스토리
 history.replaceState({s:JSON.stringify(_stateSnapshot())},"");
-render();
+
+// ═══════════════════════════════════════════════════════════════
+// Firebase + Firestore 연동 + 관리자 모드
+// ═══════════════════════════════════════════════════════════════
+let db = null;            // Firestore 인스턴스
+let storage = null;       // Firebase Storage 인스턴스
+const ADMIN_PASSWORD = 'idata2026';  // 관리자 비밀번호 (URL ?admin=idata2026)
+
+// 관리자 모드 여부 (URL 파라미터로 판별)
+const urlParams = new URLSearchParams(location.search);
+const IS_ADMIN = urlParams.get('admin') === ADMIN_PASSWORD;
+window.IS_ADMIN = IS_ADMIN;
+
+// Firebase 초기화
+function initFirebase(){
+  try{
+    if(typeof firebase === 'undefined'){
+      console.warn('[나들이go] Firebase SDK 로드 안됨');
+      return false;
+    }
+    if(!firebase.apps.length){
+      firebase.initializeApp(FIREBASE_CONFIG);
+    }
+    db = firebase.firestore();
+    try{ storage = firebase.storage(); }catch(e){ console.warn('storage 비활성'); }
+    console.log('[나들이go] Firebase 초기화 완료');
+    return true;
+  }catch(err){
+    console.error('[나들이go] Firebase 초기화 실패:', err.message);
+    return false;
+  }
+}
+
+// Firestore 문서 → 앱 스키마 변환
+function fsToFestival(doc){
+  const d = doc.data();
+  return {
+    id: d.id || doc.id,
+    docId: doc.id,        // Firestore 문서 ID (수정/삭제용)
+    title: d.title || '제목 없음',
+    loc: d.loc || '',
+    date: d.date || '',
+    region: d.region || '기타',
+    rating: d.rating != null ? d.rating : 4.5,
+    lat: d.lat || 37.5,
+    lng: d.lng || 127.0,
+    img: d.img || 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&q=80',
+    tag: d.tag || '지역축제',
+    mx: d.mx || '50%',
+    my: d.my || '50%',
+    cong: d.cong != null ? d.cong : 50,
+    idata: !!d.idata,
+    reviews: d.reviews || [],
+    _order: d._order != null ? d._order : 999
+  };
+}
+
+// 앱 스키마 → Firestore 문서
+function festivalToFs(f, order){
+  return {
+    id: f.id,
+    title: f.title || '',
+    loc: f.loc || '',
+    date: f.date || '',
+    region: f.region || '기타',
+    rating: f.rating != null ? f.rating : 4.5,
+    lat: f.lat || 37.5,
+    lng: f.lng || 127.0,
+    img: f.img || '',
+    tag: f.tag || '지역축제',
+    mx: f.mx || '50%',
+    my: f.my || '50%',
+    cong: f.cong != null ? f.cong : 50,
+    idata: !!f.idata,
+    reviews: f.reviews || [],
+    _order: order != null ? order : (f._order != null ? f._order : 999),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+// Firestore에서 축제 불러오기
+async function loadFestivalsFromFirestore(){
+  if(!db) return false;
+  try{
+    const snap = await db.collection('festivals').orderBy('_order').get();
+    if(snap.empty){
+      // 비어있으면 현재 하드코딩 데이터로 씨딩
+      console.log('[나들이go] Firestore 비어있음 → 초기 데이터 업로드');
+      await seedFestivals();
+      return true;
+    }
+    const festivals = snap.docs.map(fsToFestival);
+    S.festivals = festivals;
+    console.log('[나들이go] Firestore에서', festivals.length, '개 로드');
+    return true;
+  }catch(err){
+    console.error('[나들이go] Firestore 로드 실패:', err.message);
+    return false;
+  }
+}
+
+// 초기 데이터를 Firestore에 업로드 (최초 1회)
+async function seedFestivals(){
+  if(!db) return;
+  try{
+    const batch = db.batch();
+    S.festivals.forEach((f, i)=>{
+      const ref = db.collection('festivals').doc();
+      batch.set(ref, festivalToFs(f, i));
+    });
+    await batch.commit();
+    console.log('[나들이go] 초기 데이터 업로드 완료');
+    // 다시 로드해서 docId 채우기
+    const snap = await db.collection('festivals').orderBy('_order').get();
+    S.festivals = snap.docs.map(fsToFestival);
+  }catch(err){
+    console.error('[나들이go] 씨딩 실패:', err.message);
+  }
+}
+
+// 축제 저장 (추가 또는 수정)
+window.saveFestivalToFs = async function(festival, docId){
+  if(!db){ alert('Firebase 연결 안됨'); return false; }
+  try{
+    if(docId){
+      // 수정
+      await db.collection('festivals').doc(docId).update(festivalToFs(festival));
+    }else{
+      // 추가 (맨 끝 순서로)
+      const maxOrder = Math.max(0, ...S.festivals.map(f=>f._order||0));
+      await db.collection('festivals').add(festivalToFs(festival, maxOrder+1));
+    }
+    await loadFestivalsFromFirestore();
+    render();
+    return true;
+  }catch(err){
+    alert('저장 실패: ' + err.message);
+    return false;
+  }
+};
+
+// 축제 삭제
+window.deleteFestivalFromFs = async function(docId){
+  if(!db){ alert('Firebase 연결 안됨'); return; }
+  if(!confirm('이 축제를 삭제하시겠습니까?')) return;
+  try{
+    await db.collection('festivals').doc(docId).delete();
+    await loadFestivalsFromFirestore();
+    render();
+  }catch(err){
+    alert('삭제 실패: ' + err.message);
+  }
+};
+
+// ── 관리자 편집 패널 열기
+window.openAdminEdit = function(docId){
+  const f = docId ? S.festivals.find(x=>x.docId===docId) : {};
+  const isNew = !docId;
+
+  const mask = document.createElement('div');
+  mask.id = 'admin-edit-mask';
+  mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999999;display:flex;align-items:flex-end;justify-content:center;';
+
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-radius:24px 24px 0 0;padding:24px 20px 40px;';
+
+  const field = (label, id, value, type, ph)=>`
+    <div style="margin-bottom:14px">
+      <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px">${label}</label>
+      ${type==='textarea'
+        ? `<textarea id="ae-${id}" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit;min-height:70px;resize:vertical">${value||''}</textarea>`
+        : `<input id="ae-${id}" type="${type||'text'}" value="${(value!=null?String(value).replace(/"/g,'&quot;'):'')}" placeholder="${ph||''}" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:inherit">`}
+    </div>`;
+
+  const regionOpts = ['서울','경기','인천','강원','충북','충남','대전','세종','경북','경남','대구','부산','울산','전북','전남','광주','제주']
+    .map(r=>`<option value="${r}" ${f.region===r?'selected':''}>${r}</option>`).join('');
+  const tagOpts = ['꽃축제','여름축제','가을축제','겨울축제','야간축제','음악축제','전통문화','먹거리','문화예술','가족축제','지역축제']
+    .map(t=>`<option value="${t}" ${f.tag===t?'selected':''}>${t}</option>`).join('');
+
+  sheet.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h2 style="font-size:18px;font-weight:700;color:#0f172a;margin:0">${isNew?'➕ 새 축제 추가':'✏️ 축제 수정'}</h2>
+      <button onclick="document.getElementById('admin-edit-mask').remove()" style="background:none;border:none;font-size:26px;color:#94a3b8;cursor:pointer;line-height:1">×</button>
+    </div>
+    ${field('축제명 *','title',f.title,'text','예: 서울장미축제')}
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px">지역</label>
+        <select id="ae-region" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px"><option value="">선택</option>${regionOpts}</select></div>
+      <div style="flex:1"><label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px">태그</label>
+        <select id="ae-tag" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px"><option value="">선택</option>${tagOpts}</select></div>
+    </div>
+    <div style="height:14px"></div>
+    ${field('주소/장소','loc',f.loc,'text','예: 서울 중랑구 묵동천')}
+    ${field('기간','date',f.date,'text','예: 05.18 - 05.25')}
+    <div style="display:flex;gap:10px">
+      <div style="flex:1">${field('위도 (lat)','lat',f.lat,'number','37.6066')}</div>
+      <div style="flex:1">${field('경도 (lng)','lng',f.lng,'number','127.0830')}</div>
+    </div>
+    <label style="display:block;font-size:12px;font-weight:600;color:#475569;margin-bottom:5px">대표 사진</label>
+    <div style="margin-bottom:6px"><img id="ae-img-preview" src="${f.img||''}" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;background:#f1f5f9;display:${f.img?'block':'none'}" onerror="this.style.display='none'"></div>
+    <input type="file" id="ae-img-file" accept="image/*" style="display:none" onchange="window.uploadAdminImage(this)">
+    <button onclick="document.getElementById('ae-img-file').click()" style="width:100%;padding:11px;background:#f1f5f9;border:1.5px dashed #cbd5e1;border-radius:10px;font-size:13px;color:#475569;cursor:pointer;margin-bottom:8px">📷 사진 업로드 (또는 아래 URL 입력)</button>
+    ${field('사진 URL','img',f.img,'text','https://...')}
+    <div style="display:flex;gap:10px">
+      <div style="flex:1">${field('혼잡도 (0~100)','cong',f.cong,'number','50')}</div>
+      <div style="flex:1">${field('평점 (0~5)','rating',f.rating,'number','4.5')}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:8px 0 18px">
+      <input type="checkbox" id="ae-idata" ${f.idata?'checked':''} style="width:18px;height:18px">
+      <label for="ae-idata" style="font-size:14px;color:#475569">⚡ 아이데이터(VESTOR) 운영 축제</label>
+    </div>
+    <div style="display:flex;gap:10px">
+      ${!isNew?`<button onclick="window.deleteFestivalFromFs('${docId}');document.getElementById('admin-edit-mask').remove()" style="padding:14px 18px;background:#fef2f2;color:#dc2626;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">삭제</button>`:''}
+      <button id="ae-save" style="flex:1;padding:14px;background:#ef8200;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">${isNew?'추가하기':'저장하기'}</button>
+    </div>
+  `;
+
+  mask.appendChild(sheet);
+  document.body.appendChild(mask);
+  mask.addEventListener('click', e=>{ if(e.target===mask) mask.remove(); });
+
+  // URL 입력 시 미리보기 갱신
+  document.getElementById('ae-img').addEventListener('input', e=>{
+    const prev = document.getElementById('ae-img-preview');
+    if(e.target.value){ prev.src=e.target.value; prev.style.display='block'; }
+    else prev.style.display='none';
+  });
+
+  // 저장 버튼
+  document.getElementById('ae-save').addEventListener('click', async ()=>{
+    const g = id=>document.getElementById('ae-'+id);
+    const title = g('title').value.trim();
+    if(!title){ alert('축제명은 필수입니다'); return; }
+    const newF = {
+      id: f.id || ('f'+Date.now()),
+      title,
+      region: g('region').value || '기타',
+      tag: g('tag').value || '지역축제',
+      loc: g('loc').value.trim(),
+      date: g('date').value.trim(),
+      lat: parseFloat(g('lat').value) || 37.5,
+      lng: parseFloat(g('lng').value) || 127.0,
+      img: g('img').value.trim(),
+      cong: parseInt(g('cong').value) || 50,
+      rating: parseFloat(g('rating').value) || 4.5,
+      idata: g('idata').checked,
+      reviews: f.reviews || [],
+      mx: f.mx || (Math.max(5,Math.min(95,((parseFloat(g('lng').value)-125)/5)*100))+'%'),
+      my: f.my || (Math.max(5,Math.min(95,((38.6-parseFloat(g('lat').value))/5.6)*100))+'%')
+    };
+    g('ae-save')&&(g('ae-save').textContent='저장 중...');
+    const ok = await window.saveFestivalToFs(newF, docId);
+    if(ok) mask.remove();
+  });
+};
+
+// ── 관리자 사진 업로드 (Firebase Storage)
+window.uploadAdminImage = async function(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(!storage){ alert('사진 업로드는 Storage 설정 후 가능. 일단 URL을 입력해주세요.'); return; }
+  try{
+    const ref = storage.ref('festivals/' + Date.now() + '_' + file.name);
+    const snap = await ref.put(file);
+    const url = await snap.ref.getDownloadURL();
+    document.getElementById('ae-img').value = url;
+    const prev = document.getElementById('ae-img-preview');
+    prev.src = url; prev.style.display = 'block';
+  }catch(err){
+    alert('업로드 실패: ' + err.message);
+  }
+};
+
+// ── 관리자 플로팅 버튼 (+추가)
+function injectAdminUI(){
+  if(!IS_ADMIN) return;
+  if(document.getElementById('admin-fab')) return;
+  const fab = document.createElement('button');
+  fab.id = 'admin-fab';
+  fab.innerHTML = '➕';
+  fab.title = '새 축제 추가';
+  fab.style.cssText = 'position:fixed;right:20px;bottom:90px;width:56px;height:56px;border-radius:50%;background:#ef8200;color:#fff;border:none;font-size:24px;box-shadow:0 4px 16px rgba(239,130,0,.4);cursor:pointer;z-index:99998;';
+  fab.addEventListener('click', ()=>window.openAdminEdit(null));
+  document.body.appendChild(fab);
+
+  // 관리자 모드 표시 배너
+  const banner = document.createElement('div');
+  banner.style.cssText = 'position:fixed;top:0;left:50%;transform:translateX(-50%);background:#ef8200;color:#fff;font-size:11px;padding:3px 14px;border-radius:0 0 10px 10px;z-index:99998;font-weight:600;';
+  banner.textContent = '🔧 관리자 모드';
+  document.body.appendChild(banner);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 앱 시작: Firebase 로드 후 render
+// ═══════════════════════════════════════════════════════════════
+(async function startApp(){
+  const fbOk = initFirebase();
+  if(fbOk){
+    await loadFestivalsFromFirestore();
+  }else{
+    console.log('[나들이go] Firebase 없이 시작 (하드코딩 데이터 사용)');
+  }
+  render();
+  injectAdminUI();
+})();
 
 // ── 왼쪽 스와이프 → 뒤로 가기
 (()=>{
@@ -9236,11 +9553,14 @@ render();
   }
 
   // ── Firebase 인증 초기화
-  // TODO: 아래 config를 Firebase 콘솔에서 발급받은 값으로 교체하세요
   const FIREBASE_CONFIG = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
+    apiKey: "AIzaSyBhpg4MPy4flD2SNf5phjhtfnJFzw11_n0",
+    authDomain: "nadeuigo.firebaseapp.com",
+    projectId: "nadeuigo",
+    storageBucket: "nadeuigo.firebasestorage.app",
+    messagingSenderId: "965028961921",
+    appId: "1:965028961921:web:6ec49ee4cae8903d467780",
+    measurementId: "G-1LSHCGGBHN"
   };
 
   // S.user: null(비로그인) | {uid, name, email, photo, provider}
