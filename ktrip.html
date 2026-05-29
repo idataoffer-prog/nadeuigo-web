@@ -9226,8 +9226,18 @@ function initFirebase(){
       console.warn('[나들이go] Firebase SDK 로드 안됨');
       return false;
     }
+    // Firebase 설정 (nadeuigo 프로젝트)
+    const fbConfig = {
+      apiKey: "AIzaSyBhpg4MPy4flD2SNf5phjhtfnJFzw11_n0",
+      authDomain: "nadeuigo.firebaseapp.com",
+      projectId: "nadeuigo",
+      storageBucket: "nadeuigo.firebasestorage.app",
+      messagingSenderId: "965028961921",
+      appId: "1:965028961921:web:6ec49ee4cae8903d467780",
+      measurementId: "G-1LSHCGGBHN"
+    };
     if(!firebase.apps.length){
-      firebase.initializeApp(FIREBASE_CONFIG);
+      firebase.initializeApp(fbConfig);
     }
     db = firebase.firestore();
     try{ storage = firebase.storage(); }catch(e){ console.warn('storage 비활성'); }
