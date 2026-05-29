@@ -4065,7 +4065,17 @@ function buildDetail(){
 
 function buildSubInfo(){
   const modal=div(S._back?'modal':'modal slide-right');css(modal,{zIndex:'70'});
-  const d=INFO[S.subData.id]||{summary:'정보 없음',items:[],tip:''};
+  // 축제별 데이터(S.item) 우선 → 없으면 기본 INFO 사용
+  const baseInfo = INFO[S.subData.id] || {summary:'정보 없음',items:[],tip:''};
+  let d = baseInfo;
+  // 현재 축제(S.item)에 해당 카테고리 데이터가 있으면 그걸 사용
+  if(S.item && S.subData.id === 'program' && Array.isArray(S.item.programs) && S.item.programs.length){
+    d = {
+      summary: '오늘의 공연·행사 일정',
+      items: S.item.programs,
+      tip: baseInfo.tip || ''
+    };
+  }
 
   // 헤더
   const hdr=div('modal-header');
@@ -9269,6 +9279,7 @@ function fsToFestival(doc){
     cong: d.cong != null ? d.cong : 50,
     idata: !!d.idata,
     reviews: d.reviews || [],
+    programs: Array.isArray(d.programs) ? d.programs : [],
     _order: d._order != null ? d._order : 999
   };
 }

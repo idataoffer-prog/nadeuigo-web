@@ -143,7 +143,21 @@
   .chk-row label{font-size:13px;color:#92400e;font-weight:600;cursor:pointer;margin:0}
   .form-section{margin-top:14px;padding-top:14px;border-top:1px dashed #e2e8f0}
   .form-section:first-of-type{margin-top:0;padding-top:0;border-top:none}
-  .section-title{font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+  .section-title{font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  .section-title .add-btn{background:#ef8200;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0}
+  .section-title .add-btn:hover{background:#d97706}
+
+  /* 프로그램 항목 */
+  .prog-list{display:flex;flex-direction:column;gap:8px}
+  .prog-item{background:#fafbfc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;position:relative}
+  .prog-item .row{display:grid;grid-template-columns:90px 1fr;gap:8px;margin-bottom:6px;align-items:center}
+  .prog-item .row:last-child{margin-bottom:0}
+  .prog-item input{padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;outline:none;background:#fff}
+  .prog-item input:focus{border-color:#ef8200}
+  .prog-item .lbl{font-size:11px;color:#64748b;font-weight:600;padding-left:4px}
+  .prog-item .del-x{position:absolute;top:6px;right:6px;background:#fef2f2;color:#dc2626;border:none;width:22px;height:22px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .prog-item .del-x:hover{background:#fee2e2}
+  .prog-empty{text-align:center;padding:18px;color:#94a3b8;font-size:12px;background:#fafbfc;border:1.5px dashed #e2e8f0;border-radius:10px}
 
   /* ── 토스트 ── */
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 20px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:500;font-size:13px;font-weight:500;animation:toastIn .25s ease-out}
@@ -566,6 +580,14 @@ function openEdit(docId){
         </div>
 
         <div class="form-section">
+          <div class="section-title">
+            <span>📋 프로그램 (공연/행사 일정)</span>
+            <button type="button" class="add-btn" onclick="addProgItem()">+ 항목 추가</button>
+          </div>
+          <div id="prog-list" class="prog-list"></div>
+        </div>
+
+        <div class="form-section">
           <div class="section-title">⚙ 설정</div>
           <div class="form-row">
             <div class="field"><label>혼잡도 (0~100)</label>
@@ -589,6 +611,57 @@ function openEdit(docId){
   `;
   document.body.appendChild(mask);
   mask.addEventListener('click', e=>{ if(e.target===mask) closeModal(); });
+
+  // 프로그램 항목 렌더링
+  renderProgList(f.programs || []);
+}
+
+// 프로그램 항목 관리
+let _progItems = [];
+
+function renderProgList(items){
+  _progItems = items.map(it=>({...it}));
+  const box = document.getElementById('prog-list');
+  if(!box) return;
+  if(!_progItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 프로그램이 없습니다.<br>위의 "+ 항목 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  box.innerHTML = _progItems.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeProgItem(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">시간</div>
+        <input type="text" placeholder="예: 오후 2:00" value="${escapeAttr(it.time||'')}" oninput="updateProgItem(${i},'time',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">행사명</div>
+        <input type="text" placeholder="예: 벚꽃 버스킹 공연" value="${escapeAttr(it.title||'')}" oninput="updateProgItem(${i},'title',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">장소</div>
+        <input type="text" placeholder="예: 메인 무대" value="${escapeAttr(it.loc||'')}" oninput="updateProgItem(${i},'loc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">비고</div>
+        <input type="text" placeholder="예: 무료 입장, 혼잡 예상" value="${escapeAttr(it.note||'')}" oninput="updateProgItem(${i},'note',this.value)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function addProgItem(){
+  _progItems.push({time:'', title:'', loc:'', note:''});
+  renderProgList(_progItems);
+}
+
+function removeProgItem(i){
+  _progItems.splice(i, 1);
+  renderProgList(_progItems);
+}
+
+function updateProgItem(i, key, val){
+  if(_progItems[i]) _progItems[i][key] = val;
 }
 
 function closeModal(){
@@ -609,6 +682,10 @@ async function saveEdit(docId){
 
   const lat = parseFloat(g('lat').value) || null;
   const lng = parseFloat(g('lng').value) || null;
+
+  // 프로그램: 비어있는 항목 제외
+  const programs = _progItems.filter(p => p.title || p.time || p.loc || p.note);
+
   const data = {
     title,
     region: g('region').value || '기타',
@@ -621,6 +698,7 @@ async function saveEdit(docId){
     cong: parseInt(g('cong').value) || 50,
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
+    programs,
     reviews: [],
     mx: lng ? Math.max(5,Math.min(95,((lng-125)/5)*100))+'%' : '50%',
     my: lat ? Math.max(5,Math.min(95,((38.6-lat)/5.6)*100))+'%' : '50%',
