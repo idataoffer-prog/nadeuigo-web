@@ -159,6 +159,13 @@
   .prog-item .del-x:hover{background:#fee2e2}
   .prog-empty{text-align:center;padding:18px;color:#94a3b8;font-size:12px;background:#fafbfc;border:1.5px dashed #e2e8f0;border-radius:10px}
 
+  /* 굿즈 사진 미리보기 */
+  .goods-thumb{width:100%;max-width:120px;height:90px;background:#f1f5f9 center/cover;border-radius:8px;margin-top:4px;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:22px}
+  .goods-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+  .goods-badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:600}
+  .gb-discount{background:#fef2f2;color:#dc2626}
+  .gb-soldout{background:#1f2937;color:#fff}
+
   /* ── 토스트 ── */
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 20px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:500;font-size:13px;font-weight:500;animation:toastIn .25s ease-out}
   .toast.success{background:#16a34a}
@@ -596,6 +603,78 @@ function openEdit(docId){
         </div>
 
         <div class="form-section">
+          <div class="section-title">
+            <span>📸 포토존 (인생샷 포인트)</span>
+            <button type="button" class="add-btn" onclick="addPhotoItem()">+ 포토존 추가</button>
+          </div>
+          <div id="photo-list" class="prog-list"></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <span>🏪 편의시설 (화장실/주차장 등)</span>
+            <button type="button" class="add-btn" onclick="addAmenityItem()">+ 시설 추가</button>
+          </div>
+          <div id="amenity-list" class="prog-list"></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <span>🛍 굿즈샵 (한정판 굿즈)</span>
+            <button type="button" class="add-btn" onclick="addGoodsItem()">+ 굿즈 추가</button>
+          </div>
+          <div id="goods-list" class="prog-list"></div>
+          <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">굿즈샵 안내 (위치·운영시간)</label>
+            <input type="text" id="m-goods-tip" placeholder="예: 굿즈 판매 부스 · 정문 우측 · 10:00~20:00" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <span>🔋 대여소 (보조배터리/매트 등)</span>
+            <button type="button" class="add-btn" onclick="addRentalItem()">+ 품목 추가</button>
+          </div>
+          <div id="rental-list" class="prog-list"></div>
+          <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">대여 안내 (반납 정책 등)</label>
+            <input type="text" id="m-rental-tip" placeholder="예: 대여 반납은 당일 오후 8시까지 완료해야 합니다" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <span>📍 스탬프투어 (도장 미션)</span>
+            <button type="button" class="add-btn" onclick="addStampItem()">+ 스탬프 추가</button>
+          </div>
+          <div id="stamp-list" class="prog-list"></div>
+          <div style="margin-top:10px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">🎁 완주 보상</label>
+            <input type="text" id="m-stamp-reward" placeholder="예: 완주 시 → 벚꽃 뱃지 + 푸드트럭 할인권 증정" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+          </div>
+          <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">📝 안내 (참여 방법 등)</label>
+            <input type="text" id="m-stamp-tip" placeholder="예: 스탬프 앱은 현장 QR로 다운로드 가능합니다" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
+            <span>🚨 안전센터 (의료/안전 정보)</span>
+            <button type="button" class="add-btn" onclick="addSafetyCenter()">+ 안전 거점 추가</button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🏥 현장에 위치한 의료센터, 안전요원 본부, 분실물 센터 등</div>
+          <div id="safety-center-list" class="prog-list"></div>
+
+          <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+            <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase">📞 긴급 연락처 (위치 없음, 전화만)</div>
+            <button type="button" class="add-btn" onclick="addSafetyEmergency()">+ 연락처 추가</button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin:6px 0 8px">119, 행사 상황실, 분실물 문의 등</div>
+          <div id="safety-emergency-list" class="prog-list"></div>
+
+          <div style="margin-top:10px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">📝 안전 안내</label>
+            <input type="text" id="m-safety-tip" placeholder="예: 미아 발생 시 종합 안내소(정문 우측)로 즉시 방문하세요" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+          </div>
+        </div>
+
+        <div class="form-section">
           <div class="section-title">⚙ 설정</div>
           <div class="form-row">
             <div class="field"><label>혼잡도 (0~100)</label>
@@ -624,6 +703,32 @@ function openEdit(docId){
   renderProgList(f.programs || []);
   // 쿠폰 항목 렌더링
   renderCouponList(f.coupons || []);
+  // 포토존 항목 렌더링
+  renderPhotoList(f.photospots || []);
+  // 편의시설 항목 렌더링
+  renderAmenityList(f.amenities || []);
+  // 굿즈 항목 렌더링
+  renderGoodsList(f.goods || []);
+  // 굿즈샵 안내 (위치/운영시간)
+  const goodsTipEl = document.getElementById('m-goods-tip');
+  if(goodsTipEl) goodsTipEl.value = f.goodsTip || '';
+  // 대여소 항목 렌더링
+  renderRentalList(f.rentals || []);
+  // 대여 안내 (반납 정책 등)
+  const rentalTipEl = document.getElementById('m-rental-tip');
+  if(rentalTipEl) rentalTipEl.value = f.rentalTip || '';
+  // 스탬프투어 항목 렌더링
+  renderStampList(f.stamps || []);
+  // 스탬프 완주 보상 & 안내
+  const stampRewardEl = document.getElementById('m-stamp-reward');
+  if(stampRewardEl) stampRewardEl.value = f.stampReward || '';
+  const stampTipEl = document.getElementById('m-stamp-tip');
+  if(stampTipEl) stampTipEl.value = f.stampTip || '';
+  // 안전센터 항목 렌더링
+  renderSafetyCenterList(f.safetyCenters || []);
+  renderSafetyEmergencyList(f.safetyEmergencies || []);
+  const safetyTipEl = document.getElementById('m-safety-tip');
+  if(safetyTipEl) safetyTipEl.value = f.safetyTip || '';
 }
 
 // 프로그램 항목 관리
@@ -760,6 +865,666 @@ function updateCouponItem(i, key, val){
   if(_couponItems[i]) _couponItems[i][key] = val;
 }
 
+// ─────────────────────────────────────────────────────────────
+// 포토존 관리
+// ─────────────────────────────────────────────────────────────
+let _photoItems = [];
+
+function renderPhotoList(items){
+  _photoItems = items.map(it=>({...it}));
+  const box = document.getElementById('photo-list');
+  if(!box) return;
+  if(!_photoItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 포토존이 없습니다.<br>위의 "+ 포토존 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  // 순위 자동 부여 (1=🥇, 2=🥈, 3=🥉, 4~=숫자)
+  const ranks = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  box.innerHTML = _photoItems.map((it, i)=>{
+    const rankIcon = i < ranks.length ? ranks[i] : `${i+1}.`;
+    return `
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removePhotoItem(${i})" title="삭제">×</button>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">${rankIcon} 순위 ${i+1}위 (드래그 X — 순서는 위에서 아래로)</div>
+      <div class="row">
+        <div class="lbl">장소명 *</div>
+        <input type="text" placeholder="예: 벚꽃 터널 입구" value="${escapeAttr(it.title||'')}" oninput="updatePhotoItem(${i},'title',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">한 줄 설명</div>
+        <input type="text" placeholder="예: 핑크빛 꽃터널 정중앙 구도" value="${escapeAttr(it.desc||'')}" oninput="updatePhotoItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">대기 시간</div>
+        <input type="text" placeholder="예: 대기 약 15분 / 대기 없음" value="${escapeAttr(it.wait||'')}" oninput="updatePhotoItem(${i},'wait',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">촬영 팁</div>
+        <input type="text" placeholder="예: 역광 피하려면 오전 10시 이전 방문" value="${escapeAttr(it.tip||'')}" oninput="updatePhotoItem(${i},'tip',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위도 (lat)</div>
+        <input type="number" step="0.000001" placeholder="37.5285" value="${it.lat||''}" oninput="updatePhotoItem(${i},'lat',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">경도 (lng)</div>
+        <input type="number" step="0.000001" placeholder="126.9310" value="${it.lng||''}" oninput="updatePhotoItem(${i},'lng',parseFloat(this.value)||null)">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addPhotoItem(){
+  _photoItems.push({
+    title: '',
+    desc: '',
+    wait: '',
+    tip: '',
+    lat: null,
+    lng: null
+  });
+  renderPhotoList(_photoItems);
+}
+
+function removePhotoItem(i){
+  _photoItems.splice(i, 1);
+  renderPhotoList(_photoItems);
+}
+
+function updatePhotoItem(i, key, val){
+  if(_photoItems[i]) _photoItems[i][key] = val;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 편의시설 관리
+// ─────────────────────────────────────────────────────────────
+// 시설 종류 프리셋 (label 선택 시 icon 자동 입력)
+const AMENITY_PRESETS = [
+  {icon:'🚻', label:'화장실'},
+  {icon:'🍼', label:'수유실'},
+  {icon:'♿', label:'휠체어 이동로'},
+  {icon:'🅿️', label:'주차장'},
+  {icon:'🏥', label:'의료센터'},
+  {icon:'💊', label:'약국'},
+  {icon:'🛒', label:'편의점'},
+  {icon:'☕', label:'카페'},
+  {icon:'🍱', label:'푸드코트'},
+  {icon:'💧', label:'식수대'},
+  {icon:'🚰', label:'급수대'},
+  {icon:'🚿', label:'샤워실'},
+  {icon:'🔌', label:'충전소'},
+  {icon:'🎒', label:'물품보관함'},
+  {icon:'ℹ️', label:'종합안내소'},
+  {icon:'🚸', label:'미아보호소'},
+  {icon:'🐕', label:'반려동물 쉼터'},
+  {icon:'🚭', label:'흡연구역'},
+  {icon:'♻️', label:'분리수거장'},
+  {icon:'🗑️', label:'쓰레기통'}
+];
+
+let _amenityItems = [];
+
+function renderAmenityList(items){
+  _amenityItems = items.map(it=>({...it}));
+  const box = document.getElementById('amenity-list');
+  if(!box) return;
+  if(!_amenityItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 편의시설이 없습니다.<br>위의 "+ 시설 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  // 프리셋 옵션 HTML
+  const presetOpts = AMENITY_PRESETS.map(p =>
+    `<option value="${p.label}">${p.icon} ${p.label}</option>`
+  ).join('');
+
+  box.innerHTML = _amenityItems.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeAmenityItem(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">시설 종류</div>
+        <select onchange="selectAmenityPreset(${i},this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="">선택 또는 직접 입력</option>
+          ${presetOpts}
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <input type="text" placeholder="🚻" maxlength="3" value="${escapeAttr(it.icon||'')}" oninput="updateAmenityItem(${i},'icon',this.value)" style="max-width:60px">
+      </div>
+      <div class="row">
+        <div class="lbl">시설명 *</div>
+        <input type="text" placeholder="예: 화장실" value="${escapeAttr(it.label||'')}" oninput="updateAmenityItem(${i},'label',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위치/설명</div>
+        <input type="text" placeholder="예: 무대 뒤편 / 정문 우측 2곳" value="${escapeAttr(it.desc||'')}" oninput="updateAmenityItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위도 (lat)</div>
+        <input type="number" step="0.000001" placeholder="37.5288" value="${it.lat||''}" oninput="updateAmenityItem(${i},'lat',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">경도 (lng)</div>
+        <input type="number" step="0.000001" placeholder="126.9308" value="${it.lng||''}" oninput="updateAmenityItem(${i},'lng',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">검색어 (선택)</div>
+        <input type="text" placeholder="네비게이션용 (예: 화장실 여의도공원)" value="${escapeAttr(it.nav||'')}" oninput="updateAmenityItem(${i},'nav',this.value)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectAmenityPreset(i, label){
+  if(!label) return;
+  const preset = AMENITY_PRESETS.find(p => p.label === label);
+  if(preset){
+    _amenityItems[i].icon = preset.icon;
+    _amenityItems[i].label = preset.label;
+    if(!_amenityItems[i].nav) _amenityItems[i].nav = preset.label;
+    renderAmenityList(_amenityItems);
+  }
+}
+
+function addAmenityItem(){
+  _amenityItems.push({
+    icon: '',
+    label: '',
+    desc: '',
+    lat: null,
+    lng: null,
+    nav: ''
+  });
+  renderAmenityList(_amenityItems);
+}
+
+function removeAmenityItem(i){
+  _amenityItems.splice(i, 1);
+  renderAmenityList(_amenityItems);
+}
+
+function updateAmenityItem(i, key, val){
+  if(_amenityItems[i]) _amenityItems[i][key] = val;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 굿즈샵 관리
+// ─────────────────────────────────────────────────────────────
+const GOODS_CATEGORIES = ['인형/완구','생활용품','문구/소품','가방','의류','액세서리','식품','기타'];
+
+let _goodsItems = [];
+
+function renderGoodsList(items){
+  _goodsItems = items.map(it=>({...it}));
+  const box = document.getElementById('goods-list');
+  if(!box) return;
+  if(!_goodsItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 굿즈가 없습니다.<br>위의 "+ 굿즈 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  const catOpts = GOODS_CATEGORIES.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  box.innerHTML = _goodsItems.map((it, i)=>{
+    const stock = it.stock || '여유';
+    const cat = it.cat || '';
+    const discount = parseInt(it.discount) || 0;
+    const soldOut = !!it.soldOut;
+    const finalPrice = discount > 0 ? Math.round((it.price||0) * (100-discount)/100) : null;
+    return `
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeGoodsItem(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">상품명 *</div>
+        <input type="text" placeholder="예: 벚꽃 마스코트 인형" value="${escapeAttr(it.name||'')}" oninput="updateGoodsItem(${i},'name',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">한 줄 설명</div>
+        <input type="text" placeholder="예: 사이즈 S/M 두 종류" value="${escapeAttr(it.desc||'')}" oninput="updateGoodsItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">가격 (원)</div>
+        <input type="number" min="0" step="100" placeholder="15000" value="${it.price||''}" oninput="updateGoodsPrice(${i},this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">카테고리</div>
+        <select onchange="updateGoodsItem(${i},'cat',this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="">선택</option>
+          ${GOODS_CATEGORIES.map(c=>`<option value="${c}" ${cat===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">할인율 (%)</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" max="90" placeholder="0" value="${discount}" oninput="updateGoodsDiscount(${i},this.value)" style="flex:1">
+          ${finalPrice ? `<span style="font-size:11px;color:#dc2626;font-weight:700;white-space:nowrap">→ ${finalPrice.toLocaleString()}원</span>` : ''}
+        </div>
+      </div>
+      <div class="row">
+        <div class="lbl">재고 상태</div>
+        <select onchange="updateGoodsItem(${i},'stock',this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="여유" ${stock==='여유'?'selected':''}>🟢 여유</option>
+          <option value="한정" ${stock==='한정'?'selected':''}>🟡 한정</option>
+          <option value="임박" ${stock==='임박'?'selected':''}>🔴 임박 (곧 소진)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">사진 URL</div>
+        <input type="text" placeholder="https://..." value="${escapeAttr(it.img||'')}" oninput="updateGoodsImg(${i},this.value)">
+      </div>
+      ${it.img ? `<div style="padding-left:98px"><div class="goods-thumb" style="background-image:url('${escapeAttr(it.img)}')"></div></div>` : ''}
+      <div class="row">
+        <div class="lbl">품절 처리</div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#475569;cursor:pointer">
+          <input type="checkbox" ${soldOut?'checked':''} onchange="updateGoodsItem(${i},'soldOut',this.checked);renderGoodsList(_goodsItems)" style="width:16px;height:16px">
+          ${soldOut ? '<span class="goods-badge gb-soldout">SOLD OUT</span>' : '품절로 표시'}
+        </label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addGoodsItem(){
+  _goodsItems.push({
+    name: '',
+    desc: '',
+    price: 0,
+    cat: '',
+    discount: 0,
+    stock: '여유',
+    img: '',
+    soldOut: false
+  });
+  renderGoodsList(_goodsItems);
+}
+
+function removeGoodsItem(i){
+  _goodsItems.splice(i, 1);
+  renderGoodsList(_goodsItems);
+}
+
+function updateGoodsItem(i, key, val){
+  if(_goodsItems[i]) _goodsItems[i][key] = val;
+}
+
+function updateGoodsPrice(i, val){
+  if(_goodsItems[i]) _goodsItems[i].price = parseInt(val) || 0;
+  // 할인가 표시 갱신
+  renderGoodsList(_goodsItems);
+}
+
+function updateGoodsDiscount(i, val){
+  if(_goodsItems[i]) _goodsItems[i].discount = parseInt(val) || 0;
+  // 할인가 표시 갱신
+  renderGoodsList(_goodsItems);
+}
+
+function updateGoodsImg(i, val){
+  if(_goodsItems[i]) _goodsItems[i].img = val;
+  // 미리보기 갱신 (디바운스 없이 즉시는 깜빡임이 심해서 입력 멈춤 후만)
+  clearTimeout(window._goodsImgT);
+  window._goodsImgT = setTimeout(()=>renderGoodsList(_goodsItems), 600);
+}
+
+// ─────────────────────────────────────────────────────────────
+// 대여소 관리
+// ─────────────────────────────────────────────────────────────
+// 대여 품목 프리셋 (label 선택 시 icon 자동)
+const RENTAL_PRESETS = [
+  {icon:'🔋', label:'보조배터리'},
+  {icon:'🧺', label:'피크닉 매트'},
+  {icon:'🦽', label:'휠체어'},
+  {icon:'👶', label:'유모차'},
+  {icon:'☂️', label:'우산'},
+  {icon:'☀️', label:'양산'},
+  {icon:'🪑', label:'캠핑 의자'},
+  {icon:'🚲', label:'자전거'},
+  {icon:'🛴', label:'전동 킥보드'},
+  {icon:'🎒', label:'캐리어 보관'},
+  {icon:'🎧', label:'오디오 가이드'},
+  {icon:'📷', label:'카메라'},
+  {icon:'🔊', label:'블루투스 스피커'},
+  {icon:'🧊', label:'아이스박스'}
+];
+
+// 가격 빠른 입력 옵션
+const RENTAL_PRICE_PRESETS = ['무료', '무료 (앱 인증)', '1,000원 보증금', '3,000원 보증금', '5,000원 보증금', '시간당 1,000원', '대여비 별도'];
+
+let _rentalItems = [];
+
+function renderRentalList(items){
+  _rentalItems = items.map(it=>({...it}));
+  const box = document.getElementById('rental-list');
+  if(!box) return;
+  if(!_rentalItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 대여 품목이 없습니다.<br>위의 "+ 품목 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  const presetOpts = RENTAL_PRESETS.map(p =>
+    `<option value="${p.label}">${p.icon} ${p.label}</option>`
+  ).join('');
+  const priceOpts = RENTAL_PRICE_PRESETS.map(p =>
+    `<option value="${p}">${p}</option>`
+  ).join('');
+
+  box.innerHTML = _rentalItems.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeRentalItem(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">품목 종류</div>
+        <select onchange="selectRentalPreset(${i},this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="">선택 또는 직접 입력</option>
+          ${presetOpts}
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <input type="text" placeholder="🔋" maxlength="3" value="${escapeAttr(it.icon||'')}" oninput="updateRentalItem(${i},'icon',this.value)" style="max-width:60px">
+      </div>
+      <div class="row">
+        <div class="lbl">품목명 *</div>
+        <input type="text" placeholder="예: 보조배터리" value="${escapeAttr(it.label||'')}" oninput="updateRentalItem(${i},'label',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">설명</div>
+        <input type="text" placeholder="예: 안내소 앞 키오스크 자동 대여" value="${escapeAttr(it.desc||'')}" oninput="updateRentalItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">가격/조건</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" placeholder="예: 무료, 3,000원 보증금" value="${escapeAttr(it.price||'')}" oninput="updateRentalItem(${i},'price',this.value)" style="flex:1">
+          <select onchange="if(this.value){_rentalItems[${i}].price=this.value;renderRentalList(_rentalItems)}" style="padding:7px 8px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:11px;font-family:inherit;background:#fff;max-width:90px">
+            <option value="">⚡ 빠른선택</option>
+            ${priceOpts}
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="lbl">수령 위치</div>
+        <input type="text" placeholder="예: 종합 안내소 내부" value="${escapeAttr(it.loc||'')}" oninput="updateRentalItem(${i},'loc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위도 (lat)</div>
+        <input type="number" step="0.000001" placeholder="37.5280" value="${it.lat||''}" oninput="updateRentalItem(${i},'lat',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">경도 (lng)</div>
+        <input type="number" step="0.000001" placeholder="126.9325" value="${it.lng||''}" oninput="updateRentalItem(${i},'lng',parseFloat(this.value)||null)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectRentalPreset(i, label){
+  if(!label) return;
+  const preset = RENTAL_PRESETS.find(p => p.label === label);
+  if(preset){
+    _rentalItems[i].icon = preset.icon;
+    _rentalItems[i].label = preset.label;
+    renderRentalList(_rentalItems);
+  }
+}
+
+function addRentalItem(){
+  _rentalItems.push({
+    icon: '',
+    label: '',
+    desc: '',
+    price: '',
+    loc: '',
+    lat: null,
+    lng: null
+  });
+  renderRentalList(_rentalItems);
+}
+
+function removeRentalItem(i){
+  _rentalItems.splice(i, 1);
+  renderRentalList(_rentalItems);
+}
+
+function updateRentalItem(i, key, val){
+  if(_rentalItems[i]) _rentalItems[i][key] = val;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 스탬프투어 관리
+// ─────────────────────────────────────────────────────────────
+// 자주 쓰이는 스탬프 이모지 (빠른 선택용)
+const STAMP_EMOJIS = ['🌸','🎤','☕','🛍','ℹ️','🎪','🎨','🎯','🎭','🎡','🎢','🏛','🌹','🌻','🍱','🍢','🏞','🎆','🎁','📷','⭐','🏆','💫','✨','🎶','🥁'];
+
+let _stampItems = [];
+
+function renderStampList(items){
+  _stampItems = items.map(it=>({...it}));
+  const box = document.getElementById('stamp-list');
+  if(!box) return;
+  if(!_stampItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 스탬프 미션이 없습니다.<br>위의 "+ 스탬프 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  const emojiOpts = STAMP_EMOJIS.map(e=>`<option value="${e}">${e}</option>`).join('');
+
+  box.innerHTML = _stampItems.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeStampItem(${i})" title="삭제">×</button>
+      <div style="font-size:11px;color:#94a3b8;margin-bottom:6px">📍 ${i+1}번 스탬프 (순서는 위에서 아래로)</div>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="text" placeholder="🌸" maxlength="3" value="${escapeAttr(it.emoji||'')}" oninput="updateStampItem(${i},'emoji',this.value)" style="max-width:60px">
+          <select onchange="if(this.value){_stampItems[${i}].emoji=this.value;renderStampList(_stampItems)}" style="padding:6px 8px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:14px;font-family:inherit;background:#fff">
+            <option value="">⚡ 선택</option>
+            ${emojiOpts}
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="lbl">장소명 *</div>
+        <input type="text" placeholder="예: 벚꽃 터널 입구 스탬프존" value="${escapeAttr(it.spot||'')}" oninput="updateStampItem(${i},'spot',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위도 (lat)</div>
+        <input type="number" step="0.000001" placeholder="37.5288" value="${it.lat||''}" oninput="updateStampItem(${i},'lat',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">경도 (lng)</div>
+        <input type="number" step="0.000001" placeholder="126.9308" value="${it.lng||''}" oninput="updateStampItem(${i},'lng',parseFloat(this.value)||null)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function addStampItem(){
+  _stampItems.push({
+    emoji: '',
+    spot: '',
+    lat: null,
+    lng: null
+  });
+  renderStampList(_stampItems);
+}
+
+function removeStampItem(i){
+  _stampItems.splice(i, 1);
+  renderStampList(_stampItems);
+}
+
+function updateStampItem(i, key, val){
+  if(_stampItems[i]) _stampItems[i][key] = val;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 안전센터 관리 (2종류: 안전 거점 + 긴급 연락처)
+// ─────────────────────────────────────────────────────────────
+// 안전 거점 프리셋
+const SAFETY_CENTER_PRESETS = [
+  {icon:'🏥', label:'의료센터', phone:'119'},
+  {icon:'👮', label:'안전요원 본부', phone:''},
+  {icon:'🔍', label:'분실물 센터', phone:''},
+  {icon:'👶', label:'미아보호소', phone:''},
+  {icon:'🚑', label:'응급 구조대', phone:'119'},
+  {icon:'🚒', label:'소방 안전점', phone:'119'},
+  {icon:'ℹ️', label:'종합 안내소', phone:''},
+  {icon:'🚓', label:'경찰 안전부스', phone:'112'}
+];
+
+// 긴급 연락처 프리셋
+const SAFETY_EMERGENCY_PRESETS = [
+  {icon:'🚨', label:'긴급 신고', sub:'경찰·소방·응급', phone:'119'},
+  {icon:'👮', label:'경찰 신고', sub:'범죄·사고', phone:'112'},
+  {icon:'🏥', label:'응급의료센터', sub:'응급환자 안내', phone:'1339'},
+  {icon:'📞', label:'행사 상황실', sub:'축제 운영 전반', phone:''},
+  {icon:'🔍', label:'분실물 문의', sub:'습득·신고', phone:''},
+  {icon:'👶', label:'아동 안전 신고', sub:'미아·실종', phone:'182'},
+  {icon:'🌐', label:'관광 안내', sub:'다국어 지원', phone:'1330'},
+  {icon:'⚡', label:'한국전력', sub:'정전·전기사고', phone:'123'}
+];
+
+let _safetyCenters = [];
+let _safetyEmergencies = [];
+
+// ── 안전 거점 (위치 있음)
+function renderSafetyCenterList(items){
+  _safetyCenters = items.map(it=>({...it}));
+  const box = document.getElementById('safety-center-list');
+  if(!box) return;
+  if(!_safetyCenters.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 안전 거점이 없습니다.</div>`;
+    return;
+  }
+  const presetOpts = SAFETY_CENTER_PRESETS.map(p =>
+    `<option value="${p.label}">${p.icon} ${p.label}</option>`
+  ).join('');
+
+  box.innerHTML = _safetyCenters.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeSafetyCenter(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">거점 종류</div>
+        <select onchange="selectSafetyCenterPreset(${i},this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="">선택 또는 직접 입력</option>
+          ${presetOpts}
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <input type="text" placeholder="🏥" maxlength="3" value="${escapeAttr(it.icon||'')}" oninput="updateSafetyCenter(${i},'icon',this.value)" style="max-width:60px">
+      </div>
+      <div class="row">
+        <div class="lbl">거점명 *</div>
+        <input type="text" placeholder="예: 의료센터" value="${escapeAttr(it.label||'')}" oninput="updateSafetyCenter(${i},'label',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위치 설명</div>
+        <input type="text" placeholder="예: 주무대 우측 노란색 텐트" value="${escapeAttr(it.desc||'')}" oninput="updateSafetyCenter(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">전화번호</div>
+        <input type="tel" placeholder="예: 119 / 02-123-4567" value="${escapeAttr(it.phone||'')}" oninput="updateSafetyCenter(${i},'phone',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">위도 (lat)</div>
+        <input type="number" step="0.000001" placeholder="37.5282" value="${it.lat||''}" oninput="updateSafetyCenter(${i},'lat',parseFloat(this.value)||null)">
+      </div>
+      <div class="row">
+        <div class="lbl">경도 (lng)</div>
+        <input type="number" step="0.000001" placeholder="126.9340" value="${it.lng||''}" oninput="updateSafetyCenter(${i},'lng',parseFloat(this.value)||null)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectSafetyCenterPreset(i, label){
+  if(!label) return;
+  const preset = SAFETY_CENTER_PRESETS.find(p => p.label === label);
+  if(preset){
+    _safetyCenters[i].icon = preset.icon;
+    _safetyCenters[i].label = preset.label;
+    if(!_safetyCenters[i].phone) _safetyCenters[i].phone = preset.phone;
+    renderSafetyCenterList(_safetyCenters);
+  }
+}
+
+function addSafetyCenter(){
+  _safetyCenters.push({icon:'', label:'', desc:'', phone:'', lat:null, lng:null});
+  renderSafetyCenterList(_safetyCenters);
+}
+
+function removeSafetyCenter(i){
+  _safetyCenters.splice(i, 1);
+  renderSafetyCenterList(_safetyCenters);
+}
+
+function updateSafetyCenter(i, key, val){
+  if(_safetyCenters[i]) _safetyCenters[i][key] = val;
+}
+
+// ── 긴급 연락처 (위치 없음)
+function renderSafetyEmergencyList(items){
+  _safetyEmergencies = items.map(it=>({...it}));
+  const box = document.getElementById('safety-emergency-list');
+  if(!box) return;
+  if(!_safetyEmergencies.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 긴급 연락처가 없습니다.</div>`;
+    return;
+  }
+  const presetOpts = SAFETY_EMERGENCY_PRESETS.map((p, idx) =>
+    `<option value="${idx}">${p.icon} ${p.label} ${p.phone?'('+p.phone+')':''}</option>`
+  ).join('');
+
+  box.innerHTML = _safetyEmergencies.map((it, i)=>`
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeSafetyEmergency(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">연락처 종류</div>
+        <select onchange="selectSafetyEmergencyPreset(${i},this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="">선택 또는 직접 입력</option>
+          ${presetOpts}
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <input type="text" placeholder="🚨" maxlength="3" value="${escapeAttr(it.icon||'')}" oninput="updateSafetyEmergency(${i},'icon',this.value)" style="max-width:60px">
+      </div>
+      <div class="row">
+        <div class="lbl">제목 *</div>
+        <input type="text" placeholder="예: 긴급 신고" value="${escapeAttr(it.label||'')}" oninput="updateSafetyEmergency(${i},'label',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">부제</div>
+        <input type="text" placeholder="예: 경찰·소방·응급" value="${escapeAttr(it.sub||'')}" oninput="updateSafetyEmergency(${i},'sub',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">전화번호 *</div>
+        <input type="tel" placeholder="예: 119 / 02-123-4567" value="${escapeAttr(it.phone||'')}" oninput="updateSafetyEmergency(${i},'phone',this.value)">
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectSafetyEmergencyPreset(i, idx){
+  if(idx === '') return;
+  const preset = SAFETY_EMERGENCY_PRESETS[parseInt(idx)];
+  if(preset){
+    _safetyEmergencies[i] = {...preset};
+    renderSafetyEmergencyList(_safetyEmergencies);
+  }
+}
+
+function addSafetyEmergency(){
+  _safetyEmergencies.push({icon:'', label:'', sub:'', phone:''});
+  renderSafetyEmergencyList(_safetyEmergencies);
+}
+
+function removeSafetyEmergency(i){
+  _safetyEmergencies.splice(i, 1);
+  renderSafetyEmergencyList(_safetyEmergencies);
+}
+
+function updateSafetyEmergency(i, key, val){
+  if(_safetyEmergencies[i]) _safetyEmergencies[i][key] = val;
+}
+
 function closeModal(){
   document.querySelectorAll('.modal-mask').forEach(m=>m.remove());
 }
@@ -783,6 +1548,41 @@ async function saveEdit(docId){
   const programs = _progItems.filter(p => p.title || p.time || p.loc || p.note);
   // 쿠폰: label 없는 건 제외
   const coupons = _couponItems.filter(c => c.label && c.label.trim());
+  // 포토존: title 없는 건 제외 + 순위 자동 부여
+  const ranks = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
+  const photospots = _photoItems
+    .filter(p => p.title && p.title.trim())
+    .map((p, i) => ({...p, rank: i < ranks.length ? ranks[i] : `${i+1}.`}));
+  // 편의시설: label 없는 건 제외
+  const amenities = _amenityItems.filter(a => a.label && a.label.trim());
+  // 굿즈: name 없는 건 제외
+  const goods = _goodsItems
+    .filter(g2 => g2.name && g2.name.trim())
+    .map(g2 => ({
+      ...g2,
+      price: parseInt(g2.price) || 0,
+      discount: parseInt(g2.discount) || 0,
+      soldOut: !!g2.soldOut
+    }));
+  const goodsTipEl2 = document.getElementById('m-goods-tip');
+  const goodsTip = goodsTipEl2 ? goodsTipEl2.value.trim() : '';
+  // 대여소: label 없는 건 제외
+  const rentals = _rentalItems.filter(r => r.label && r.label.trim());
+  const rentalTipEl2 = document.getElementById('m-rental-tip');
+  const rentalTip = rentalTipEl2 ? rentalTipEl2.value.trim() : '';
+  // 스탬프투어: spot 없는 건 제외 + 순번 자동 부여
+  const stamps = _stampItems
+    .filter(s => s.spot && s.spot.trim())
+    .map((s, i) => ({...s, num: String(i+1)}));
+  const stampRewardEl2 = document.getElementById('m-stamp-reward');
+  const stampReward = stampRewardEl2 ? stampRewardEl2.value.trim() : '';
+  const stampTipEl2 = document.getElementById('m-stamp-tip');
+  const stampTip = stampTipEl2 ? stampTipEl2.value.trim() : '';
+  // 안전센터: label 없는 건 제외
+  const safetyCenters = _safetyCenters.filter(c => c.label && c.label.trim());
+  const safetyEmergencies = _safetyEmergencies.filter(e => e.label && e.label.trim() && e.phone && e.phone.trim());
+  const safetyTipEl2 = document.getElementById('m-safety-tip');
+  const safetyTip = safetyTipEl2 ? safetyTipEl2.value.trim() : '';
 
   const data = {
     title,
@@ -798,6 +1598,18 @@ async function saveEdit(docId){
     idata: g('idata').checked,
     programs,
     coupons,
+    photospots,
+    amenities,
+    goods,
+    goodsTip,
+    rentals,
+    rentalTip,
+    stamps,
+    stampReward,
+    stampTip,
+    safetyCenters,
+    safetyEmergencies,
+    safetyTip,
     reviews: [],
     mx: lng ? Math.max(5,Math.min(95,((lng-125)/5)*100))+'%' : '50%',
     my: lat ? Math.max(5,Math.min(95,((38.6-lat)/5.6)*100))+'%' : '50%',

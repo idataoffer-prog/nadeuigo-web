@@ -685,6 +685,9 @@ body{display:flex;align-items:center;justify-content:center;}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<!-- 카카오맵 SDK (장소검색 services 라이브러리 포함) -->
+<!-- ⚠️ YOUR_KAKAO_JS_KEY 를 본인의 카카오 JavaScript 키로 교체하세요 -->
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5d2ab5e5924a9cc895f2e40dd1238646&libraries=services&autoload=false"></script>
 </head>
 <body>
 <div id="app"></div>
@@ -4082,6 +4085,79 @@ function buildSubInfo(){
       items: S.item.coupons,
       tip: baseInfo.tip || '쿠폰은 1인 1회 사용 가능합니다.'
     };
+  }
+  if(S.item && S.subData.id === 'photospot' && Array.isArray(S.item.photospots) && S.item.photospots.length){
+    d = {
+      summary: '인생샷 포인트 TOP ' + S.item.photospots.length,
+      items: S.item.photospots,
+      tip: baseInfo.tip || '삼각대 사용은 혼잡 구간에서 제한될 수 있어요.'
+    };
+  }
+  if(S.item && S.subData.id === 'amenities' && Array.isArray(S.item.amenities) && S.item.amenities.length){
+    d = {
+      summary: '편의시설 위치 안내',
+      items: S.item.amenities,
+      tip: baseInfo.tip || '시설 위치는 현장 상황에 따라 변경될 수 있습니다.'
+    };
+  }
+  if(S.item && S.subData.id === 'goods' && Array.isArray(S.item.goods) && S.item.goods.length){
+    d = {
+      summary: '한정판 굿즈 판매 중',
+      items: S.item.goods,
+      tip: S.item.goodsTip || baseInfo.tip || '굿즈 판매 부스에서 만나보세요.'
+    };
+  }
+  if(S.item && S.subData.id === 'rental' && Array.isArray(S.item.rentals) && S.item.rentals.length){
+    d = {
+      summary: '대여 서비스 안내',
+      items: S.item.rentals,
+      tip: S.item.rentalTip || baseInfo.tip || '대여 후 반납 시간을 확인하세요.'
+    };
+  }
+  if(S.item && S.subData.id === 'stamp' && Array.isArray(S.item.stamps) && S.item.stamps.length){
+    d = {
+      summary: '스탬프 투어 미션',
+      items: S.item.stamps,
+      reward: S.item.stampReward || baseInfo.reward || '',
+      tip: S.item.stampTip || baseInfo.tip || '현장 QR로 스탬프를 모아보세요.'
+    };
+  }
+  if(S.item && S.subData.id === 'safety'){
+    const hasCenters = Array.isArray(S.item.safetyCenters) && S.item.safetyCenters.length;
+    const hasEmergencies = Array.isArray(S.item.safetyEmergencies) && S.item.safetyEmergencies.length;
+    if(hasCenters || hasEmergencies){
+      d = {
+        summary: '안전·의료 정보',
+        centers: hasCenters ? S.item.safetyCenters : (baseInfo.centers || []),
+        emergency: hasEmergencies ? S.item.safetyEmergencies : (baseInfo.emergency || []),
+        tip: S.item.safetyTip || baseInfo.tip || '응급 상황 시 즉시 119로 신고하세요.'
+      };
+    }
+  }
+  // 주변 맛집/숙박/약국 — 카카오 지도 API로 자동 검색
+  if(S.item && ['food','hotels','pharmacy'].includes(S.subData.id)){
+    const key = S.subData.id;
+    // 이미 검색해서 주입된 데이터가 있으면 사용
+    if(Array.isArray(S.item[key]) && S.item[key].length){
+      d = {
+        summary: key==='food' ? `주변 맛집 ${S.item[key].length}곳` :
+                 key==='hotels' ? `근처 숙박 ${S.item[key].length}곳` :
+                 `근처 약국 ${S.item[key].length}곳`,
+        items: S.item[key],
+        tip: baseInfo.tip || ''
+      };
+    } else {
+      // 비동기로 카카오 검색 후 다시 렌더링
+      injectNearbyToFestival().then(ok=>{
+        if(ok) render();
+      });
+      // 일단 로딩 표시
+      d = {
+        summary: '주변 정보 검색 중...',
+        items: [],
+        tip: '카카오맵으로 자동 검색하고 있어요. 잠시만요...'
+      };
+    }
   }
 
   // 헤더
@@ -9288,6 +9364,18 @@ function fsToFestival(doc){
     reviews: d.reviews || [],
     programs: Array.isArray(d.programs) ? d.programs : [],
     coupons: Array.isArray(d.coupons) ? d.coupons : [],
+    photospots: Array.isArray(d.photospots) ? d.photospots : [],
+    amenities: Array.isArray(d.amenities) ? d.amenities : [],
+    goods: Array.isArray(d.goods) ? d.goods : [],
+    goodsTip: d.goodsTip || '',
+    rentals: Array.isArray(d.rentals) ? d.rentals : [],
+    rentalTip: d.rentalTip || '',
+    stamps: Array.isArray(d.stamps) ? d.stamps : [],
+    stampReward: d.stampReward || '',
+    stampTip: d.stampTip || '',
+    safetyCenters: Array.isArray(d.safetyCenters) ? d.safetyCenters : [],
+    safetyEmergencies: Array.isArray(d.safetyEmergencies) ? d.safetyEmergencies : [],
+    safetyTip: d.safetyTip || '',
     _order: d._order != null ? d._order : 999
   };
 }
@@ -9530,6 +9618,194 @@ function injectAdminUI(){
 // ═══════════════════════════════════════════════════════════════
 // 앱 시작: Firebase 로드 후 render
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// 카카오맵 — 주변 장소 자동 검색 (맛집/숙박/약국)
+// ═══════════════════════════════════════════════════════════════
+let kakaoReady = false;
+let placesService = null;
+// 검색 결과 캐시: 같은 축제 다시 들어가도 재호출 X
+const kakaoCache = {};
+
+// 카카오 카테고리 코드
+// FD6 음식점, AD5 숙박, PM9 약국
+// CE7 카페, CS2 편의점, HP8 병원
+const KAKAO_CATEGORIES = {
+  food: 'FD6',
+  hotels: 'AD5',
+  pharmacy: 'PM9'
+};
+
+function initKakaoMap(){
+  return new Promise((resolve)=>{
+    if(typeof kakao === 'undefined' || !kakao.maps){
+      console.warn('[나들이go] 카카오맵 SDK 로드 안됨');
+      resolve(false); return;
+    }
+    kakao.maps.load(()=>{
+      try{
+        placesService = new kakao.maps.services.Places();
+        kakaoReady = true;
+        console.log('[나들이go] 카카오맵 초기화 완료');
+        resolve(true);
+      }catch(err){
+        console.error('[나들이go] 카카오맵 초기화 실패:', err.message);
+        resolve(false);
+      }
+    });
+  });
+}
+
+// 주변 장소 검색 (카테고리 + 좌표 + 반경)
+function searchNearbyPlaces(category, lat, lng, radius){
+  return new Promise((resolve)=>{
+    if(!kakaoReady || !placesService){
+      resolve([]); return;
+    }
+    const code = KAKAO_CATEGORIES[category];
+    if(!code){ resolve([]); return; }
+
+    placesService.categorySearch(code, (data, status)=>{
+      if(status !== kakao.maps.services.Status.OK){
+        resolve([]); return;
+      }
+      // 거리순으로 정렬되어 옴
+      resolve(data || []);
+    }, {
+      location: new kakao.maps.LatLng(lat, lng),
+      radius: radius || 1000,  // 기본 1km
+      sort: kakao.maps.services.SortBy.DISTANCE
+    });
+  });
+}
+
+// 축제 좌표 기준으로 3가지 카테고리 다 검색해서 캐시
+async function loadNearbyForFestival(festival){
+  if(!festival || !festival.lat || !festival.lng) return;
+  const cacheKey = `${festival.id}_${festival.lat}_${festival.lng}`;
+  if(kakaoCache[cacheKey]) return kakaoCache[cacheKey];
+
+  if(!kakaoReady){
+    const ok = await initKakaoMap();
+    if(!ok) return null;
+  }
+
+  try{
+    const [food, hotels, pharmacy] = await Promise.all([
+      searchNearbyPlaces('food', festival.lat, festival.lng, 1000),
+      searchNearbyPlaces('hotels', festival.lat, festival.lng, 1000),
+      searchNearbyPlaces('pharmacy', festival.lat, festival.lng, 1000)
+    ]);
+
+    // ktrip 스키마로 변환
+    const result = {
+      food: food.slice(0, 10).map((p, i)=>kakaoToFood(p, i+1)),
+      hotels: hotels.slice(0, 10).map((p, i)=>kakaoToHotel(p, i+1)),
+      pharmacy: pharmacy.slice(0, 10).map(kakaoToPharmacy)
+    };
+    kakaoCache[cacheKey] = result;
+    console.log('[나들이go] 주변 장소:', festival.title, '맛집', result.food.length, '숙박', result.hotels.length, '약국', result.pharmacy.length);
+    return result;
+  }catch(err){
+    console.error('[나들이go] 주변 검색 실패:', err.message);
+    return null;
+  }
+}
+
+// 카카오 검색 결과 → ktrip food 스키마
+function kakaoToFood(p, rank){
+  const dist = parseInt(p.distance) || 0;
+  const walkMin = Math.max(1, Math.round(dist / 67)); // 도보 1분 ≈ 67m
+  return {
+    rank: String(rank),
+    name: p.place_name,
+    desc: p.category_name ? p.category_name.split('>').slice(-1)[0].trim() : '',
+    walk: `도보 ${walkMin}분 (${dist}m)`,
+    cat: extractFoodCat(p.category_name),
+    price: '',  // 카카오에서 가격 정보 없음
+    hours: '',  // 영업시간도 별도 API 필요
+    phone: p.phone || '',
+    addr: p.road_address_name || p.address_name || '',
+    lat: parseFloat(p.y),
+    lng: parseFloat(p.x),
+    url: p.place_url,  // 카카오맵 상세 페이지
+    img: ''  // 카카오 카테고리검색에는 이미지 없음
+  };
+}
+
+function kakaoToHotel(p, rank){
+  const dist = parseInt(p.distance) || 0;
+  const walkMin = Math.max(1, Math.round(dist / 67));
+  return {
+    name: p.place_name,
+    desc: p.category_name ? p.category_name.split('>').slice(-1)[0].trim() : '',
+    dist: `도보 ${walkMin}분 (${dist}m)`,
+    badge: '',
+    price: '',
+    type: extractHotelType(p.category_name),
+    stars: 0,
+    phone: p.phone || '',
+    addr: p.road_address_name || p.address_name || '',
+    lat: parseFloat(p.y),
+    lng: parseFloat(p.x),
+    url: p.place_url,
+    img: ''
+  };
+}
+
+function kakaoToPharmacy(p){
+  const dist = parseInt(p.distance) || 0;
+  const walkMin = Math.max(1, Math.round(dist / 67));
+  return {
+    label: p.place_name,
+    hours: '',
+    walk: `도보 ${walkMin}분 (${dist}m)`,
+    phone: p.phone || '',
+    open: true,  // 영업 여부 알 수 없음 → 일단 true
+    addr: p.road_address_name || p.address_name || '',
+    lat: parseFloat(p.y),
+    lng: parseFloat(p.x),
+    url: p.place_url,
+    img: ''
+  };
+}
+
+// 카테고리 텍스트에서 음식 종류 추출
+function extractFoodCat(catName){
+  if(!catName) return '음식점';
+  const parts = catName.split('>').map(s=>s.trim());
+  // "음식점 > 한식 > 갈비" → "한식"
+  if(parts.length >= 2) return parts[1] || parts[0];
+  return parts[0];
+}
+
+function extractHotelType(catName){
+  if(!catName) return '숙박';
+  const parts = catName.split('>').map(s=>s.trim());
+  if(parts.length >= 2) return parts[1] || parts[0];
+  return parts[0];
+}
+
+// 카카오 검색 결과를 S.item에 주입 (buildSubInfo가 자동으로 사용)
+async function injectNearbyToFestival(){
+  if(!S.item) return false;
+  const f = S.item;
+  // 이미 admin이 직접 입력한 데이터가 있으면 건너뜀
+  if(['food','hotels','pharmacy'].includes(S.subData?.id)){
+    const key = S.subData.id;
+    if(Array.isArray(f[key]) && f[key].length) return true;
+  }
+  const nearby = await loadNearbyForFestival(f);
+  if(!nearby) return false;
+  // S.item에 nearby 데이터 주입
+  if(!Array.isArray(f.food) || !f.food.length) f.food = nearby.food;
+  if(!Array.isArray(f.hotels) || !f.hotels.length) f.hotels = nearby.hotels;
+  if(!Array.isArray(f.pharmacy) || !f.pharmacy.length) f.pharmacy = nearby.pharmacy;
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 앱 시작: Firebase 로드 후 render
+// ═══════════════════════════════════════════════════════════════
 (async function startApp(){
   const fbOk = initFirebase();
   if(fbOk){
@@ -9537,6 +9813,8 @@ function injectAdminUI(){
   }else{
     console.log('[나들이go] Firebase 없이 시작 (하드코딩 데이터 사용)');
   }
+  // 카카오맵은 백그라운드로 초기화 (사용자 대기 안 시킴)
+  initKakaoMap();
   render();
   injectAdminUI();
 })();
