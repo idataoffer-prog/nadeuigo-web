@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>나들이go 관리자</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#f1f5f9;color:#0f172a;font-size:14px;-webkit-font-smoothing:antialiased}
+
+  /* ── 상단 헤더 ── */
+  .topbar{background:linear-gradient(135deg,#ef8200 0%,#f59e0b 100%);color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(239,130,0,.25)}
+  .topbar .title{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700}
+  .topbar .title .emoji{font-size:22px}
+  .topbar .links{display:flex;gap:14px;font-size:12px;align-items:center}
+  .topbar a{color:rgba(255,255,255,.95);text-decoration:none;padding:6px 12px;background:rgba(255,255,255,.18);border-radius:18px;transition:.15s}
+  .topbar a:hover{background:rgba(255,255,255,.3)}
+
+  /* ── 통계 카드 ── */
+  .stats{padding:16px 20px 0;display:flex;gap:10px;flex-wrap:wrap}
+  .stat{flex:1;min-width:120px;background:#fff;padding:14px 16px;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .stat .label{font-size:11px;color:#64748b;font-weight:500;letter-spacing:.3px}
+  .stat .value{font-size:22px;font-weight:700;color:#0f172a;margin-top:3px;line-height:1}
+  .stat.orange .value{color:#ef8200}
+  .stat.green .value{color:#16a34a}
+  .stat.blue .value{color:#2563eb}
+
+  /* ── 툴바 ── */
+  .container{padding:16px 20px 80px;max-width:1400px;margin:0 auto}
+  .toolbar{background:#fff;padding:12px;border-radius:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .toolbar input[type=text],.toolbar select{padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fff;font-family:inherit;outline:none;transition:.15s}
+  .toolbar input[type=text]:focus,.toolbar select:focus{border-color:#ef8200}
+  .toolbar input[type=text]{flex:1;min-width:160px}
+  .toolbar .spacer{flex:1}
+  .btn{padding:9px 15px;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
+  .btn-primary{background:#ef8200;color:#fff}
+  .btn-primary:hover{background:#d97706}
+  .btn-secondary{background:#fff;color:#475569;border:1.5px solid #e2e8f0}
+  .btn-secondary:hover{background:#f8fafc;border-color:#cbd5e1}
+  .btn-danger{background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca}
+  .btn-danger:hover{background:#fee2e2}
+  .btn-sm{padding:6px 11px;font-size:12px;border-radius:8px}
+
+  /* ── 뷰 전환 토글 ── */
+  .view-toggle{display:inline-flex;background:#f1f5f9;padding:3px;border-radius:10px;gap:2px}
+  .view-toggle button{background:transparent;border:none;padding:7px 14px;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;border-radius:8px;transition:.15s}
+  .view-toggle button.active{background:#fff;color:#ef8200;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+  /* ── 표 ── */
+  .table-wrap{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .table-scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:900px}
+  thead{background:#f8fafc;position:sticky;top:0}
+  th{text-align:left;padding:11px 12px;font-size:11px;font-weight:600;color:#64748b;border-bottom:1px solid #e2e8f0;letter-spacing:.3px;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none}
+  th:hover{color:#ef8200}
+  th .sort-arrow{font-size:10px;opacity:.5;margin-left:3px}
+  th.sorted .sort-arrow{opacity:1;color:#ef8200}
+  td{padding:11px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  tr:hover td{background:#fafbfc}
+  tr.idata td{background:linear-gradient(90deg,rgba(239,130,0,.04),transparent 30%)}
+  td.thumb{width:50px}
+  td.thumb img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:#f1f5f9;display:block}
+  td.thumb .ph{width:42px;height:42px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:18px}
+  td.title{font-weight:600;color:#0f172a;min-width:160px}
+  td.title .badge{display:inline-block;background:#fef3c7;color:#92400e;font-size:10px;padding:1px 6px;border-radius:6px;margin-left:6px;font-weight:600;vertical-align:middle}
+  td.title .sublabel{font-size:11px;color:#94a3b8;font-weight:400;margin-top:2px}
+  .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .chip-region{background:#eff6ff;color:#1e40af}
+  .chip-tag{background:#f5f3ff;color:#6d28d9}
+  .cong-bar{display:flex;align-items:center;gap:6px;min-width:80px}
+  .cong-bar .bar{flex:1;height:5px;background:#f1f5f9;border-radius:3px;overflow:hidden}
+  .cong-bar .fill{height:100%;border-radius:3px}
+  .cong-bar .num{font-size:11px;color:#64748b;min-width:30px;font-weight:600}
+  .row-actions{display:flex;gap:4px;justify-content:flex-end}
+  .icon-btn{background:#f8fafc;border:1px solid #e2e8f0;width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;transition:.15s;color:#64748b}
+  .icon-btn:hover{background:#fff;border-color:#cbd5e1}
+  .icon-btn.del:hover{background:#fef2f2;border-color:#fecaca;color:#dc2626}
+  .icon-btn.fav.on{background:#fef3c7;border-color:#fde68a;color:#d97706}
+
+  /* ── 카드 그리드 ── */
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:.15s;cursor:pointer;position:relative}
+  .card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+  .card .img{width:100%;height:140px;background:#f1f5f9 center/cover;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:36px;position:relative}
+  .card .idata-badge{position:absolute;top:8px;left:8px;background:#ef8200;color:#fff;font-size:10px;padding:3px 8px;border-radius:8px;font-weight:700;letter-spacing:.3px}
+  .card .body{padding:12px 14px}
+  .card .ctitle{font-weight:700;color:#0f172a;font-size:14px;margin-bottom:4px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .card .cloc{font-size:11px;color:#64748b;margin-bottom:8px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .card .cmeta{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+  .card .cactions{display:flex;gap:5px;border-top:1px solid #f1f5f9;padding-top:10px;margin-top:10px}
+  .card .cactions .icon-btn{flex:1;height:32px}
+
+  /* ── 모바일 표 → 카드 자동 ── */
+  @media (max-width:640px){
+    .topbar{padding:12px 14px}
+    .topbar .title{font-size:14px}
+    .container{padding:12px 14px 80px}
+    .stats{padding:12px 14px 0}
+    .stat{min-width:0;padding:10px 12px}
+    .stat .value{font-size:18px}
+    .toolbar{padding:10px}
+    .toolbar input[type=text],.toolbar select,.btn{font-size:12px}
+    .card-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+    .card .img{height:100px;font-size:28px}
+  }
+
+  /* ── 빈 상태 ── */
+  .empty{padding:60px 20px;text-align:center;color:#94a3b8}
+  .empty .emoji{font-size:42px;margin-bottom:10px}
+  .empty .msg{font-size:14px}
+
+  /* ── 로딩 ── */
+  .loading{padding:60px;text-align:center;color:#94a3b8}
+  .spinner{display:inline-block;width:24px;height:24px;border:3px solid #e2e8f0;border-top-color:#ef8200;border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── 모달 ── */
+  .modal-mask{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:14px;animation:fadeIn .15s ease-out}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal{background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:slideUp .2s ease-out}
+  @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .modal-head{padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+  .modal-head h2{font-size:16px;font-weight:700;color:#0f172a}
+  .modal-head .close{background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;line-height:1;padding:4px}
+  .modal-body{padding:20px;overflow-y:auto;flex:1}
+  .modal-foot{padding:14px 20px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;gap:8px;background:#fafbfc;border-radius:0 0 16px 16px}
+
+  /* ── 폼 ── */
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .form-row.full{grid-template-columns:1fr}
+  .field label{display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:5px;letter-spacing:.3px}
+  .field label .req{color:#dc2626}
+  .field input,.field textarea,.field select{width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none;transition:.15s}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:#ef8200}
+  .field textarea{resize:vertical;min-height:60px}
+  .field .hint{font-size:10px;color:#94a3b8;margin-top:3px}
+  .img-preview{margin-top:6px;border-radius:10px;overflow:hidden;background:#f1f5f9;max-height:140px;display:flex;align-items:center;justify-content:center}
+  .img-preview img{max-width:100%;max-height:140px;display:block}
+  .img-preview .ph{padding:24px 0;color:#94a3b8;font-size:11px}
+  .chk-row{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fef3c7;border-radius:10px;cursor:pointer}
+  .chk-row input{width:18px;height:18px;cursor:pointer}
+  .chk-row label{font-size:13px;color:#92400e;font-weight:600;cursor:pointer;margin:0}
+  .form-section{margin-top:14px;padding-top:14px;border-top:1px dashed #e2e8f0}
+  .form-section:first-of-type{margin-top:0;padding-top:0;border-top:none}
+  .section-title{font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px}
+
+  /* ── 토스트 ── */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 20px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:500;font-size:13px;font-weight:500;animation:toastIn .25s ease-out}
+  .toast.success{background:#16a34a}
+  .toast.error{background:#dc2626}
+  @keyframes toastIn{from{transform:translate(-50%,20px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+
+  /* ── 비밀번호 게이트 ── */
+  .gate{position:fixed;inset:0;background:linear-gradient(135deg,#fef3c7 0%,#fde68a 100%);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+  .gate-box{background:#fff;padding:36px 30px;border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.15);max-width:340px;width:100%;text-align:center}
+  .gate-box .emoji{font-size:48px;margin-bottom:14px}
+  .gate-box h1{font-size:18px;font-weight:700;color:#0f172a;margin-bottom:8px}
+  .gate-box p{font-size:13px;color:#64748b;margin-bottom:20px}
+  .gate-box input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:12px;text-align:center;font-family:inherit}
+  .gate-box input:focus{outline:none;border-color:#ef8200}
+  .gate-box button{width:100%;padding:12px;background:#ef8200;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer}
+  .gate-box .err{color:#dc2626;font-size:12px;margin-bottom:10px;display:none}
+</style>
+</head>
+<body>
+
+<!-- 비밀번호 게이트 -->
+<div class="gate" id="gate" style="display:none">
+  <div class="gate-box">
+    <div class="emoji">🔐</div>
+    <h1>관리자 인증</h1>
+    <p>나들이go 축제 관리 페이지입니다.<br>관리자 키를 입력해주세요.</p>
+    <div class="err" id="gate-err">키가 올바르지 않습니다</div>
+    <input type="password" id="gate-pw" placeholder="관리자 키" autocomplete="off">
+    <button onclick="checkGate()">접속</button>
+  </div>
+</div>
+
+<!-- 본문 (인증 후 표시) -->
+<div id="app" style="display:none">
+
+  <div class="topbar">
+    <div class="title"><span class="emoji">🎪</span> 나들이go 축제 관리자</div>
+    <div class="links">
+      <a href="https://idataoffer-prog.github.io/nadeuigo-web/ktrip.html" target="_blank">👁 소비자 앱</a>
+      <a href="#" onclick="logoutGate();return false">🚪 종료</a>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">전체 축제</div><div class="value" id="stat-total">-</div></div>
+    <div class="stat orange"><div class="label">⚡ VESTOR 운영</div><div class="value" id="stat-idata">-</div></div>
+    <div class="stat green"><div class="label">진행중</div><div class="value" id="stat-ongoing">-</div></div>
+    <div class="stat blue"><div class="label">예정</div><div class="value" id="stat-upcoming">-</div></div>
+  </div>
+
+  <div class="container">
+    <div class="toolbar">
+      <input type="text" id="search" placeholder="🔍 축제명/주소 검색...">
+      <select id="filter-region">
+        <option value="">전체 지역</option>
+        <option>서울</option><option>경기</option><option>인천</option>
+        <option>강원</option><option>충북</option><option>충남</option>
+        <option>대전</option><option>세종</option><option>경북</option>
+        <option>경남</option><option>대구</option><option>부산</option>
+        <option>울산</option><option>전북</option><option>전남</option>
+        <option>광주</option><option>제주</option>
+      </select>
+      <select id="filter-tag">
+        <option value="">전체 태그</option>
+        <option>꽃축제</option><option>여름축제</option><option>가을축제</option>
+        <option>겨울축제</option><option>야간축제</option><option>음악축제</option>
+        <option>전통문화</option><option>먹거리</option><option>문화예술</option>
+        <option>가족축제</option><option>지역축제</option>
+      </select>
+      <select id="filter-idata">
+        <option value="">전체</option>
+        <option value="1">⚡ VESTOR 운영만</option>
+        <option value="0">일반 축제만</option>
+      </select>
+      <div class="view-toggle">
+        <button id="vt-table" class="active" onclick="switchView('table')">📋 표</button>
+        <button id="vt-card" onclick="switchView('card')">🎴 카드</button>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">📥 CSV</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()">📤 CSV 가져오기</button>
+      <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="uploadCSV(this)">
+      <button class="btn btn-primary" onclick="openEdit(null)">➕ 새 축제</button>
+    </div>
+
+    <!-- 표 뷰 -->
+    <div class="table-wrap" id="view-table">
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th data-sort="title">축제명 <span class="sort-arrow">↕</span></th>
+              <th data-sort="region">지역</th>
+              <th data-sort="tag">태그</th>
+              <th data-sort="date">기간 <span class="sort-arrow">↕</span></th>
+              <th data-sort="cong">혼잡도 <span class="sort-arrow">↕</span></th>
+              <th data-sort="rating">평점</th>
+              <th style="text-align:right">작업</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="8" class="loading"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 카드 뷰 -->
+    <div class="card-grid" id="view-card" style="display:none"></div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+
+<script>
+// ─────────────────────────────────────────────────────────────
+// Firebase 설정 (nadeuigo 프로젝트)
+// ─────────────────────────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBhpg4MPy4flD2SNf5phjhtfnJFzw11_n0",
+  authDomain: "nadeuigo.firebaseapp.com",
+  projectId: "nadeuigo",
+  storageBucket: "nadeuigo.firebasestorage.app",
+  messagingSenderId: "965028961921",
+  appId: "1:965028961921:web:6ec49ee4cae8903d467780"
+};
+const ADMIN_KEY = 'idata2026';
+
+let db, storage;
+let festivals = [];        // 전체 목록
+let view = 'table';        // 'table' | 'card'
+let sortKey = '_order';    // 정렬 기준
+let sortAsc = true;
+
+// ─────────────────────────────────────────────────────────────
+// 비밀번호 게이트
+// ─────────────────────────────────────────────────────────────
+function initGate(){
+  const urlKey = new URLSearchParams(location.search).get('key');
+  const savedKey = localStorage.getItem('nadeuri_admin_key');
+  if(urlKey === ADMIN_KEY || savedKey === ADMIN_KEY){
+    if(urlKey === ADMIN_KEY) localStorage.setItem('nadeuri_admin_key', ADMIN_KEY);
+    startApp();
+  }else{
+    document.getElementById('gate').style.display = 'flex';
+    document.getElementById('gate-pw').focus();
+    document.getElementById('gate-pw').addEventListener('keydown', e=>{
+      if(e.key==='Enter') checkGate();
+    });
+  }
+}
+function checkGate(){
+  const pw = document.getElementById('gate-pw').value;
+  if(pw === ADMIN_KEY){
+    localStorage.setItem('nadeuri_admin_key', ADMIN_KEY);
+    document.getElementById('gate').style.display = 'none';
+    startApp();
+  }else{
+    document.getElementById('gate-err').style.display = 'block';
+  }
+}
+function logoutGate(){
+  if(!confirm('관리자 모드를 종료하시겠습니까?')) return;
+  localStorage.removeItem('nadeuri_admin_key');
+  location.href = location.pathname; // ?key 파라미터 제거하고 새로고침
+}
+
+// ─────────────────────────────────────────────────────────────
+// 앱 시작
+// ─────────────────────────────────────────────────────────────
+async function startApp(){
+  document.getElementById('app').style.display = 'block';
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    try{ storage = firebase.storage(); }catch(e){}
+    await loadFestivals();
+    bindEvents();
+  }catch(err){
+    toast('Firebase 초기화 실패: '+err.message, 'error');
+  }
+}
+
+async function loadFestivals(){
+  try{
+    const snap = await db.collection('festivals').orderBy('_order').get();
+    festivals = snap.docs.map(d=>({...d.data(), docId:d.id}));
+    render();
+    updateStats();
+  }catch(err){
+    document.getElementById('tbody').innerHTML = `<tr><td colspan="8" class="empty"><div class="emoji">⚠️</div><div class="msg">로드 실패: ${escapeHtml(err.message)}</div></td></tr>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 필터링 + 정렬
+// ─────────────────────────────────────────────────────────────
+function getFiltered(){
+  const search = document.getElementById('search').value.trim().toLowerCase();
+  const region = document.getElementById('filter-region').value;
+  const tag = document.getElementById('filter-tag').value;
+  const idata = document.getElementById('filter-idata').value;
+
+  let arr = festivals.filter(f=>{
+    if(search && !((f.title||'').toLowerCase().includes(search) || (f.loc||'').toLowerCase().includes(search))) return false;
+    if(region && f.region !== region) return false;
+    if(tag && f.tag !== tag) return false;
+    if(idata === '1' && !f.idata) return false;
+    if(idata === '0' && f.idata) return false;
+    return true;
+  });
+
+  // 정렬
+  arr.sort((a,b)=>{
+    let av = a[sortKey], bv = b[sortKey];
+    if(av==null) av = '';
+    if(bv==null) bv = '';
+    if(typeof av === 'string') av = av.toLowerCase();
+    if(typeof bv === 'string') bv = bv.toLowerCase();
+    if(av < bv) return sortAsc ? -1 : 1;
+    if(av > bv) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  return arr;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 렌더링
+// ─────────────────────────────────────────────────────────────
+function render(){
+  const arr = getFiltered();
+  if(view === 'table') renderTable(arr);
+  else renderCards(arr);
+}
+
+function renderTable(arr){
+  const tbody = document.getElementById('tbody');
+  if(!arr.length){
+    tbody.innerHTML = `<tr><td colspan="8" class="empty"><div class="emoji">🎪</div><div class="msg">조건에 맞는 축제가 없습니다</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = arr.map(f=>`
+    <tr class="${f.idata?'idata':''}">
+      <td class="thumb">${f.img ? `<img src="${escapeHtml(f.img)}" onerror="this.outerHTML='<div class=ph>🎪</div>'">` : `<div class="ph">🎪</div>`}</td>
+      <td class="title">
+        ${escapeHtml(f.title)}${f.idata?'<span class="badge">⚡VESTOR</span>':''}
+        ${f.loc?`<div class="sublabel">${escapeHtml(f.loc)}</div>`:''}
+      </td>
+      <td>${f.region?`<span class="chip chip-region">${escapeHtml(f.region)}</span>`:'<span style="color:#cbd5e1">-</span>'}</td>
+      <td>${f.tag?`<span class="chip chip-tag">${escapeHtml(f.tag)}</span>`:'<span style="color:#cbd5e1">-</span>'}</td>
+      <td style="font-size:12px;color:#475569;white-space:nowrap">${escapeHtml(f.date||'-')}</td>
+      <td>${congBar(f.cong)}</td>
+      <td style="font-size:12px;color:#475569">⭐ ${f.rating!=null?f.rating:'-'}</td>
+      <td><div class="row-actions">
+        <button class="icon-btn fav ${f.idata?'on':''}" onclick="toggleIdata('${f.docId}')" title="VESTOR 운영 토글">⚡</button>
+        <button class="icon-btn" onclick="openEdit('${f.docId}')" title="수정">✏️</button>
+        <button class="icon-btn del" onclick="deleteOne('${f.docId}','${escapeAttr(f.title)}')" title="삭제">🗑</button>
+      </div></td>
+    </tr>
+  `).join('');
+}
+
+function renderCards(arr){
+  const grid = document.getElementById('view-card');
+  if(!arr.length){
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="emoji">🎪</div><div class="msg">조건에 맞는 축제가 없습니다</div></div>`;
+    return;
+  }
+  grid.innerHTML = arr.map(f=>`
+    <div class="card" onclick="openEdit('${f.docId}')">
+      <div class="img" style="${f.img?`background-image:url('${escapeAttr(f.img)}')`:''}">${!f.img?'🎪':''}
+        ${f.idata?'<div class="idata-badge">⚡ VESTOR</div>':''}
+      </div>
+      <div class="body">
+        <div class="ctitle">${escapeHtml(f.title)}</div>
+        <div class="cloc">📍 ${escapeHtml(f.loc||'-')}</div>
+        <div class="cmeta">
+          ${f.region?`<span class="chip chip-region">${escapeHtml(f.region)}</span>`:''}
+          ${f.tag?`<span class="chip chip-tag">${escapeHtml(f.tag)}</span>`:''}
+        </div>
+        <div style="font-size:11px;color:#64748b">📅 ${escapeHtml(f.date||'미정')} · 혼잡 ${f.cong||0}%</div>
+        <div class="cactions" onclick="event.stopPropagation()">
+          <button class="icon-btn fav ${f.idata?'on':''}" onclick="toggleIdata('${f.docId}')">⚡</button>
+          <button class="icon-btn" onclick="openEdit('${f.docId}')">✏️</button>
+          <button class="icon-btn del" onclick="deleteOne('${f.docId}','${escapeAttr(f.title)}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function congBar(cong){
+  const c = cong||0;
+  const color = c>=70?'#dc2626':c>=40?'#f59e0b':'#16a34a';
+  return `<div class="cong-bar"><div class="bar"><div class="fill" style="width:${c}%;background:${color}"></div></div><span class="num">${c}%</span></div>`;
+}
+
+function updateStats(){
+  document.getElementById('stat-total').textContent = festivals.length;
+  document.getElementById('stat-idata').textContent = festivals.filter(f=>f.idata).length;
+  const today = new Date().toISOString().slice(0,10);
+  // date 필드는 "05.18 - 05.25" 형식이라 정확한 진행중 판단이 어렵지만 대략 처리
+  let ongoing = 0, upcoming = 0;
+  const now = new Date();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const today2 = mm+'.'+dd;
+  festivals.forEach(f=>{
+    if(!f.date) return;
+    const m = f.date.match(/(\d{2})\.(\d{2})\s*-\s*(\d{2})\.(\d{2})/);
+    if(m){
+      const start = m[1]+'.'+m[2], end = m[3]+'.'+m[4];
+      if(today2 >= start && today2 <= end) ongoing++;
+      else if(today2 < start) upcoming++;
+    }
+  });
+  document.getElementById('stat-ongoing').textContent = ongoing;
+  document.getElementById('stat-upcoming').textContent = upcoming;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 뷰 전환 & 이벤트
+// ─────────────────────────────────────────────────────────────
+function switchView(v){
+  view = v;
+  document.getElementById('vt-table').classList.toggle('active', v==='table');
+  document.getElementById('vt-card').classList.toggle('active', v==='card');
+  document.getElementById('view-table').style.display = v==='table'?'block':'none';
+  document.getElementById('view-card').style.display = v==='card'?'grid':'none';
+  render();
+}
+
+function bindEvents(){
+  document.getElementById('search').addEventListener('input', debounce(render, 200));
+  document.getElementById('filter-region').addEventListener('change', render);
+  document.getElementById('filter-tag').addEventListener('change', render);
+  document.getElementById('filter-idata').addEventListener('change', render);
+  document.querySelectorAll('th[data-sort]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.sort;
+      if(sortKey === k) sortAsc = !sortAsc;
+      else { sortKey = k; sortAsc = true; }
+      document.querySelectorAll('th').forEach(t=>t.classList.remove('sorted'));
+      th.classList.add('sorted');
+      render();
+    });
+  });
+}
+
+function debounce(fn, ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
+
+// ─────────────────────────────────────────────────────────────
+// 편집 모달
+// ─────────────────────────────────────────────────────────────
+function openEdit(docId){
+  const f = docId ? (festivals.find(x=>x.docId===docId)||{}) : {};
+  const isNew = !docId;
+
+  const regionOpts = ['서울','경기','인천','강원','충북','충남','대전','세종','경북','경남','대구','부산','울산','전북','전남','광주','제주']
+    .map(r=>`<option value="${r}" ${f.region===r?'selected':''}>${r}</option>`).join('');
+  const tagOpts = ['꽃축제','여름축제','가을축제','겨울축제','야간축제','음악축제','전통문화','먹거리','문화예술','가족축제','지역축제']
+    .map(t=>`<option value="${t}" ${f.tag===t?'selected':''}>${t}</option>`).join('');
+
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <h2>${isNew?'➕ 새 축제 추가':'✏️ 축제 수정'}</h2>
+        <button class="close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <div class="section-title">📌 기본 정보</div>
+          <div class="form-row full"><div class="field">
+            <label>축제명 <span class="req">*</span></label>
+            <input type="text" id="m-title" value="${escapeAttr(f.title||'')}" placeholder="예: 서울 봄꽃축제">
+          </div></div>
+          <div class="form-row">
+            <div class="field"><label>지역</label>
+              <select id="m-region"><option value="">선택</option>${regionOpts}</select></div>
+            <div class="field"><label>태그</label>
+              <select id="m-tag"><option value="">선택</option>${tagOpts}</select></div>
+          </div>
+          <div class="form-row full"><div class="field">
+            <label>주소</label>
+            <input type="text" id="m-loc" value="${escapeAttr(f.loc||'')}" placeholder="서울 영등포구 여의도동">
+          </div></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">📅 기간 / 좌표</div>
+          <div class="form-row full"><div class="field">
+            <label>기간 표시 (예: 05.18 - 05.25)</label>
+            <input type="text" id="m-date" value="${escapeAttr(f.date||'')}" placeholder="MM.DD - MM.DD">
+          </div></div>
+          <div class="form-row">
+            <div class="field"><label>위도 (lat)</label>
+              <input type="number" step="0.000001" id="m-lat" value="${f.lat||''}" placeholder="37.5285">
+              <div class="hint">33~43 사이</div></div>
+            <div class="field"><label>경도 (lng)</label>
+              <input type="number" step="0.000001" id="m-lng" value="${f.lng||''}" placeholder="126.9327">
+              <div class="hint">124~132 사이</div></div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">🖼 사진</div>
+          <div class="field">
+            <label>사진 URL</label>
+            <input type="text" id="m-img" value="${escapeAttr(f.img||'')}" placeholder="https://..." oninput="updatePreview()">
+            <div class="img-preview" id="m-preview">${f.img?`<img src="${escapeAttr(f.img)}" onerror="this.outerHTML='<div class=ph>이미지 로드 실패</div>'">`:'<div class="ph">미리보기</div>'}</div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">⚙ 설정</div>
+          <div class="form-row">
+            <div class="field"><label>혼잡도 (0~100)</label>
+              <input type="number" min="0" max="100" id="m-cong" value="${f.cong!=null?f.cong:50}"></div>
+            <div class="field"><label>평점 (0~5)</label>
+              <input type="number" step="0.1" min="0" max="5" id="m-rating" value="${f.rating!=null?f.rating:4.5}"></div>
+          </div>
+          <label class="chk-row">
+            <input type="checkbox" id="m-idata" ${f.idata?'checked':''}>
+            <span>⚡ 아이데이터(VESTOR) 운영 축제로 표시</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        ${!isNew?`<button class="btn btn-danger btn-sm" onclick="deleteOne('${docId}','${escapeAttr(f.title)}',true)">삭제</button>`:''}
+        <div style="flex:1"></div>
+        <button class="btn btn-secondary btn-sm" onclick="closeModal()">취소</button>
+        <button class="btn btn-primary" id="m-save" onclick="saveEdit('${docId||''}')">${isNew?'추가':'저장'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+  mask.addEventListener('click', e=>{ if(e.target===mask) closeModal(); });
+}
+
+function closeModal(){
+  document.querySelectorAll('.modal-mask').forEach(m=>m.remove());
+}
+
+function updatePreview(){
+  const url = document.getElementById('m-img').value.trim();
+  const box = document.getElementById('m-preview');
+  if(!url) box.innerHTML = '<div class="ph">미리보기</div>';
+  else box.innerHTML = `<img src="${escapeAttr(url)}" onerror="this.outerHTML='<div class=ph>이미지 로드 실패</div>'">`;
+}
+
+async function saveEdit(docId){
+  const g = id => document.getElementById('m-'+id);
+  const title = g('title').value.trim();
+  if(!title){ toast('축제명은 필수입니다', 'error'); return; }
+
+  const lat = parseFloat(g('lat').value) || null;
+  const lng = parseFloat(g('lng').value) || null;
+  const data = {
+    title,
+    region: g('region').value || '기타',
+    tag: g('tag').value || '지역축제',
+    loc: g('loc').value.trim(),
+    date: g('date').value.trim(),
+    lat: lat || 37.5,
+    lng: lng || 127.0,
+    img: g('img').value.trim(),
+    cong: parseInt(g('cong').value) || 50,
+    rating: parseFloat(g('rating').value) || 4.5,
+    idata: g('idata').checked,
+    reviews: [],
+    mx: lng ? Math.max(5,Math.min(95,((lng-125)/5)*100))+'%' : '50%',
+    my: lat ? Math.max(5,Math.min(95,((38.6-lat)/5.6)*100))+'%' : '50%',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  const btn = document.getElementById('m-save');
+  btn.textContent = '저장 중...';
+  btn.disabled = true;
+
+  try{
+    if(docId){
+      await db.collection('festivals').doc(docId).update(data);
+      toast('수정되었습니다', 'success');
+    }else{
+      const maxOrder = Math.max(0, ...festivals.map(f=>f._order||0));
+      data._order = maxOrder + 1;
+      data.id = 'f' + Date.now();
+      await db.collection('festivals').add(data);
+      toast('추가되었습니다', 'success');
+    }
+    closeModal();
+    await loadFestivals();
+  }catch(err){
+    toast('저장 실패: '+err.message, 'error');
+    btn.textContent = '저장';
+    btn.disabled = false;
+  }
+}
+
+async function deleteOne(docId, title, fromModal){
+  if(!confirm(`"${title}" 축제를 삭제하시겠습니까?\n삭제하면 복구할 수 없습니다.`)) return;
+  try{
+    await db.collection('festivals').doc(docId).delete();
+    toast('삭제되었습니다', 'success');
+    if(fromModal) closeModal();
+    await loadFestivals();
+  }catch(err){
+    toast('삭제 실패: '+err.message, 'error');
+  }
+}
+
+async function toggleIdata(docId){
+  const f = festivals.find(x=>x.docId===docId);
+  if(!f) return;
+  try{
+    await db.collection('festivals').doc(docId).update({ idata: !f.idata });
+    await loadFestivals();
+  }catch(err){
+    toast('실패: '+err.message, 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CSV 다운로드 / 업로드
+// ─────────────────────────────────────────────────────────────
+function downloadCSV(){
+  const headers = ['title','region','tag','loc','date','lat','lng','img','cong','rating','idata'];
+  const rows = festivals.map(f=>headers.map(h=>{
+    let v = f[h];
+    if(v == null) v = '';
+    if(typeof v === 'boolean') v = v ? '1' : '0';
+    v = String(v).replace(/"/g, '""');
+    if(v.includes(',') || v.includes('"') || v.includes('\n')) v = `"${v}"`;
+    return v;
+  }).join(','));
+  const csv = '\ufeff' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `나들이go_축제_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast(`${festivals.length}개 다운로드 완료`, 'success');
+}
+
+async function uploadCSV(input){
+  const file = input.files[0];
+  if(!file) return;
+  input.value = '';
+  if(!confirm(`CSV 파일의 축제를 추가합니다.\n파일: ${file.name}\n계속하시겠습니까?`)) return;
+  try{
+    const text = await file.text();
+    const lines = text.replace(/^\ufeff/, '').split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2) throw new Error('데이터가 없습니다');
+    const headers = parseCSVLine(lines[0]);
+    const batch = db.batch();
+    let added = 0;
+    const startOrder = Math.max(0, ...festivals.map(f=>f._order||0)) + 1;
+    for(let i=1; i<lines.length; i++){
+      const cells = parseCSVLine(lines[i]);
+      const obj = {};
+      headers.forEach((h, idx)=>{ obj[h] = cells[idx] || ''; });
+      if(!obj.title) continue;
+      const data = {
+        title: obj.title,
+        region: obj.region || '기타',
+        tag: obj.tag || '지역축제',
+        loc: obj.loc || '',
+        date: obj.date || '',
+        lat: parseFloat(obj.lat) || 37.5,
+        lng: parseFloat(obj.lng) || 127.0,
+        img: obj.img || '',
+        cong: parseInt(obj.cong) || 50,
+        rating: parseFloat(obj.rating) || 4.5,
+        idata: obj.idata === '1' || obj.idata === 'true',
+        reviews: [],
+        mx: '50%', my: '50%',
+        _order: startOrder + added,
+        id: 'f' + Date.now() + '_' + added,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      const ref = db.collection('festivals').doc();
+      batch.set(ref, data);
+      added++;
+    }
+    await batch.commit();
+    toast(`${added}개 추가 완료`, 'success');
+    await loadFestivals();
+  }catch(err){
+    toast('CSV 업로드 실패: '+err.message, 'error');
+  }
+}
+
+function parseCSVLine(line){
+  const result = [];
+  let cur = '', inQuote = false;
+  for(let i=0; i<line.length; i++){
+    const c = line[i];
+    if(inQuote){
+      if(c === '"' && line[i+1] === '"'){ cur += '"'; i++; }
+      else if(c === '"') inQuote = false;
+      else cur += c;
+    }else{
+      if(c === '"') inQuote = true;
+      else if(c === ','){ result.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 유틸
+// ─────────────────────────────────────────────────────────────
+function escapeHtml(s){ if(s==null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ if(s==null) return ''; return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function toast(msg, type){
+  const t = document.createElement('div');
+  t.className = 'toast' + (type?' '+type:'');
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2800);
+}
+
+// 시작
+initGate();
+</script>
+
+</body>
+</html>
