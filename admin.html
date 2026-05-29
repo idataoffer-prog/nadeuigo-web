@@ -588,6 +588,14 @@ function openEdit(docId){
         </div>
 
         <div class="form-section">
+          <div class="section-title">
+            <span>🎫 쿠폰 (할인 혜택)</span>
+            <button type="button" class="add-btn" onclick="addCouponItem()">+ 쿠폰 추가</button>
+          </div>
+          <div id="coupon-list" class="prog-list"></div>
+        </div>
+
+        <div class="form-section">
           <div class="section-title">⚙ 설정</div>
           <div class="form-row">
             <div class="field"><label>혼잡도 (0~100)</label>
@@ -614,6 +622,8 @@ function openEdit(docId){
 
   // 프로그램 항목 렌더링
   renderProgList(f.programs || []);
+  // 쿠폰 항목 렌더링
+  renderCouponList(f.coupons || []);
 }
 
 // 프로그램 항목 관리
@@ -664,6 +674,92 @@ function updateProgItem(i, key, val){
   if(_progItems[i]) _progItems[i][key] = val;
 }
 
+// ─────────────────────────────────────────────────────────────
+// 쿠폰 관리
+// ─────────────────────────────────────────────────────────────
+let _couponItems = [];
+
+function renderCouponList(items){
+  _couponItems = items.map(it=>({...it}));
+  const box = document.getElementById('coupon-list');
+  if(!box) return;
+  if(!_couponItems.length){
+    box.innerHTML = `<div class="prog-empty">아직 등록된 쿠폰이 없습니다.<br>위의 "+ 쿠폰 추가" 버튼을 눌러 시작하세요.</div>`;
+    return;
+  }
+  box.innerHTML = _couponItems.map((it, i)=>{
+    const stock = it.stock || '여유';
+    const type = it.type || 'qr';
+    return `
+    <div class="prog-item">
+      <button type="button" class="del-x" onclick="removeCouponItem(${i})" title="삭제">×</button>
+      <div class="row">
+        <div class="lbl">이모지</div>
+        <input type="text" placeholder="🎫" maxlength="2" value="${escapeAttr(it.emoji||'🎫')}" oninput="updateCouponItem(${i},'emoji',this.value)" style="max-width:60px">
+      </div>
+      <div class="row">
+        <div class="lbl">쿠폰명 *</div>
+        <input type="text" placeholder="예: 푸드트럭 10% 할인" value="${escapeAttr(it.label||'')}" oninput="updateCouponItem(${i},'label',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">한 줄 설명</div>
+        <input type="text" placeholder="예: 축제 내 모든 푸드트럭 적용" value="${escapeAttr(it.desc||'')}" oninput="updateCouponItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">사용 방법</div>
+        <select onchange="updateCouponItem(${i},'type',this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="qr" ${type==='qr'?'selected':''}>📱 QR 화면 제시</option>
+          <option value="staff" ${type==='staff'?'selected':''}>👤 담당자 확인 후 차감</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">사용 안내</div>
+        <input type="text" placeholder="예: 카운터에서 QR 화면 스캔" value="${escapeAttr(it.how||'')}" oninput="updateCouponItem(${i},'how',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">유효기간</div>
+        <input type="text" placeholder="예: ~ 05.25" value="${escapeAttr(it.expire||'')}" oninput="updateCouponItem(${i},'expire',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">재고 상태</div>
+        <select onchange="updateCouponItem(${i},'stock',this.value)" style="padding:7px 10px;border:1.5px solid #e2e8f0;border-radius:7px;font-size:12px;font-family:inherit;background:#fff">
+          <option value="여유" ${stock==='여유'?'selected':''}>🟢 여유</option>
+          <option value="한정" ${stock==='한정'?'selected':''}>🟡 한정</option>
+          <option value="임박" ${stock==='임박'?'selected':''}>🔴 임박 (곧 소진)</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="lbl">상세 조건</div>
+        <input type="text" placeholder="예: 1인 1회, 1만원 이상 구매 시" value="${escapeAttr(it.detail||'')}" oninput="updateCouponItem(${i},'detail',this.value)">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addCouponItem(){
+  _couponItems.push({
+    id: 'c' + Date.now(),
+    emoji: '🎫',
+    label: '',
+    desc: '',
+    type: 'qr',
+    how: '',
+    expire: '',
+    stock: '여유',
+    detail: ''
+  });
+  renderCouponList(_couponItems);
+}
+
+function removeCouponItem(i){
+  _couponItems.splice(i, 1);
+  renderCouponList(_couponItems);
+}
+
+function updateCouponItem(i, key, val){
+  if(_couponItems[i]) _couponItems[i][key] = val;
+}
+
 function closeModal(){
   document.querySelectorAll('.modal-mask').forEach(m=>m.remove());
 }
@@ -685,6 +781,8 @@ async function saveEdit(docId){
 
   // 프로그램: 비어있는 항목 제외
   const programs = _progItems.filter(p => p.title || p.time || p.loc || p.note);
+  // 쿠폰: label 없는 건 제외
+  const coupons = _couponItems.filter(c => c.label && c.label.trim());
 
   const data = {
     title,
@@ -699,6 +797,7 @@ async function saveEdit(docId){
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
     programs,
+    coupons,
     reviews: [],
     mx: lng ? Math.max(5,Math.min(95,((lng-125)/5)*100))+'%' : '50%',
     my: lat ? Math.max(5,Math.min(95,((38.6-lat)/5.6)*100))+'%' : '50%',

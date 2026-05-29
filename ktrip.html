@@ -4076,6 +4076,13 @@ function buildSubInfo(){
       tip: baseInfo.tip || ''
     };
   }
+  if(S.item && S.subData.id === 'coupon' && Array.isArray(S.item.coupons) && S.item.coupons.length){
+    d = {
+      summary: '사용 가능한 할인 혜택',
+      items: S.item.coupons,
+      tip: baseInfo.tip || '쿠폰은 1인 1회 사용 가능합니다.'
+    };
+  }
 
   // 헤더
   const hdr=div('modal-header');
@@ -9280,6 +9287,7 @@ function fsToFestival(doc){
     idata: !!d.idata,
     reviews: d.reviews || [],
     programs: Array.isArray(d.programs) ? d.programs : [],
+    coupons: Array.isArray(d.coupons) ? d.coupons : [],
     _order: d._order != null ? d._order : 999
   };
 }
