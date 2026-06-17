@@ -650,7 +650,10 @@ function openEdit(docId){
           </div>
           <div id="goods-list" class="prog-list"></div>
           <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">굿즈샵 안내 (위치·운영시간)</label>
-            <input type="text" id="m-goods-tip" placeholder="예: 굿즈 판매 부스 · 정문 우측 · 10:00~20:00" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+            <div style="display:flex;gap:4px">
+              <input type="text" id="m-goods-tip" placeholder="예: 굿즈 판매 부스 · 정문 우측 · 10:00~20:00" style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+              <button type="button" onclick="showQuickPhrases('goods-tip','m-goods-tip',this)" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+            </div>
           </div>
         </div>
 
@@ -661,7 +664,10 @@ function openEdit(docId){
           </div>
           <div id="rental-list" class="prog-list"></div>
           <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">대여 안내 (반납 정책 등)</label>
-            <input type="text" id="m-rental-tip" placeholder="예: 대여 반납은 당일 오후 8시까지 완료해야 합니다" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+            <div style="display:flex;gap:4px">
+              <input type="text" id="m-rental-tip" placeholder="예: 대여 반납은 당일 오후 8시까지 완료해야 합니다" style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+              <button type="button" onclick="showQuickPhrases('rental-tip','m-rental-tip',this)" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+            </div>
           </div>
         </div>
 
@@ -672,10 +678,16 @@ function openEdit(docId){
           </div>
           <div id="stamp-list" class="prog-list"></div>
           <div style="margin-top:10px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">🎁 완주 보상</label>
-            <input type="text" id="m-stamp-reward" placeholder="예: 완주 시 → 벚꽃 뱃지 + 푸드트럭 할인권 증정" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+            <div style="display:flex;gap:4px">
+              <input type="text" id="m-stamp-reward" placeholder="예: 완주 시 → 벚꽃 뱃지 + 푸드트럭 할인권 증정" style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+              <button type="button" onclick="showQuickPhrases('stamp-reward','m-stamp-reward',this)" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+            </div>
           </div>
           <div style="margin-top:8px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">📝 안내 (참여 방법 등)</label>
-            <input type="text" id="m-stamp-tip" placeholder="예: 스탬프 앱은 현장 QR로 다운로드 가능합니다" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+            <div style="display:flex;gap:4px">
+              <input type="text" id="m-stamp-tip" placeholder="예: 스탬프 앱은 현장 QR로 다운로드 가능합니다" style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+              <button type="button" onclick="showQuickPhrases('stamp-tip','m-stamp-tip',this)" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+            </div>
           </div>
         </div>
 
@@ -695,7 +707,10 @@ function openEdit(docId){
           <div id="safety-emergency-list" class="prog-list"></div>
 
           <div style="margin-top:10px"><label style="display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:4px">📝 안전 안내</label>
-            <input type="text" id="m-safety-tip" placeholder="예: 미아 발생 시 종합 안내소(정문 우측)로 즉시 방문하세요" style="width:100%;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+            <div style="display:flex;gap:4px">
+              <input type="text" id="m-safety-tip" placeholder="예: 미아 발생 시 종합 안내소(정문 우측)로 즉시 방문하세요" style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-family:inherit;outline:none">
+              <button type="button" onclick="showQuickPhrases('safety-tip','m-safety-tip',this)" style="padding:4px 10px;border:1px solid #e5e7eb;border-radius:8px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+            </div>
           </div>
         </div>
 
@@ -855,11 +870,17 @@ function renderCouponList(items){
       </div>
       <div class="row">
         <div class="lbl">쿠폰명 *</div>
-        <input type="text" placeholder="예: 푸드트럭 10% 할인" value="${escapeAttr(it.label||'')}" oninput="updateCouponItem(${i},'label',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 푸드트럭 10% 할인" value="${escapeAttr(it.label||'')}" oninput="updateCouponItem(${i},'label',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('coupon-label','coupon',${i},'label',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">한 줄 설명</div>
-        <input type="text" placeholder="예: 축제 내 모든 푸드트럭 적용" value="${escapeAttr(it.desc||'')}" oninput="updateCouponItem(${i},'desc',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 축제 내 모든 푸드트럭 적용" value="${escapeAttr(it.desc||'')}" oninput="updateCouponItem(${i},'desc',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('coupon-desc','coupon',${i},'desc',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">사용 방법</div>
@@ -870,7 +891,10 @@ function renderCouponList(items){
       </div>
       <div class="row">
         <div class="lbl">사용 안내</div>
-        <input type="text" placeholder="예: 카운터에서 QR 화면 스캔" value="${escapeAttr(it.how||'')}" oninput="updateCouponItem(${i},'how',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 카운터에서 QR 화면 스캔" value="${escapeAttr(it.how||'')}" oninput="updateCouponItem(${i},'how',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('coupon-how','coupon',${i},'how',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">유효기간</div>
@@ -886,7 +910,10 @@ function renderCouponList(items){
       </div>
       <div class="row">
         <div class="lbl">상세 조건</div>
-        <input type="text" placeholder="예: 1인 1회, 1만원 이상 구매 시" value="${escapeAttr(it.detail||'')}" oninput="updateCouponItem(${i},'detail',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 1인 1회, 1만원 이상 구매 시" value="${escapeAttr(it.detail||'')}" oninput="updateCouponItem(${i},'detail',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('coupon-detail','coupon',${i},'detail',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -943,15 +970,24 @@ function renderPhotoList(items){
       </div>
       <div class="row">
         <div class="lbl">한 줄 설명</div>
-        <input type="text" placeholder="예: 핑크빛 꽃터널 정중앙 구도" value="${escapeAttr(it.desc||'')}" oninput="updatePhotoItem(${i},'desc',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 핑크빛 꽃터널 정중앙 구도" value="${escapeAttr(it.desc||'')}" oninput="updatePhotoItem(${i},'desc',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('photospot-desc','photo',${i},'desc',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">대기 시간</div>
-        <input type="text" placeholder="예: 대기 약 15분 / 대기 없음" value="${escapeAttr(it.wait||'')}" oninput="updatePhotoItem(${i},'wait',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 대기 약 15분 / 대기 없음" value="${escapeAttr(it.wait||'')}" oninput="updatePhotoItem(${i},'wait',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('photospot-wait','photo',${i},'wait',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">촬영 팁</div>
-        <input type="text" placeholder="예: 역광 피하려면 오전 10시 이전 방문" value="${escapeAttr(it.tip||'')}" oninput="updatePhotoItem(${i},'tip',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 역광 피하려면 오전 10시 이전 방문" value="${escapeAttr(it.tip||'')}" oninput="updatePhotoItem(${i},'tip',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('photospot-tip','photo',${i},'tip',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">위도 (lat)</div>
@@ -1130,7 +1166,10 @@ function renderGoodsList(items){
       </div>
       <div class="row">
         <div class="lbl">한 줄 설명</div>
-        <input type="text" placeholder="예: 사이즈 S/M 두 종류" value="${escapeAttr(it.desc||'')}" oninput="updateGoodsItem(${i},'desc',this.value)">
+        <div style="display:flex;gap:4px;flex:1">
+          <input type="text" placeholder="예: 사이즈 S/M 두 종류" value="${escapeAttr(it.desc||'')}" oninput="updateGoodsItem(${i},'desc',this.value)" style="flex:1">
+          <button type="button" onclick="showQuickPhrasesForItem('goods-desc','goods',${i},'desc',this)" style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;flex-shrink:0" title="자주 쓰는 문구 선택">💡 추천</button>
+        </div>
       </div>
       <div class="row">
         <div class="lbl">가격 (원)</div>
@@ -1585,6 +1624,302 @@ function updatePreview(){
   const box = document.getElementById('m-preview');
   if(!url) box.innerHTML = '<div class="ph">미리보기</div>';
   else box.innerHTML = `<img src="${escapeAttr(url)}" onerror="this.outerHTML='<div class=ph>이미지 로드 실패</div>'">`;
+}
+
+// ═══════════════════════════════════════════════════════
+// 자주 쓰는 문구 라이브러리 (빠른 선택용)
+// ═══════════════════════════════════════════════════════
+const QUICK_PHRASES = {
+  // 쿠폰명 (label)
+  'coupon-label': [
+    '푸드트럭 10% 할인',
+    '푸드트럭 20% 할인',
+    '메뉴 1+1 행사',
+    '음료 1잔 무료',
+    '굿즈 5,000원 할인',
+    '입장료 50% 할인',
+    '주차료 무료',
+    '체험 프로그램 무료',
+    '기념품 증정',
+    '디저트 1개 증정'
+  ],
+  
+  // 쿠폰 한 줄 설명 (desc)
+  'coupon-desc': [
+    '축제 내 모든 푸드트럭 적용',
+    '지정 매장에서만 사용 가능',
+    '선착순 100명 한정',
+    '하루 1회만 사용 가능',
+    '현금 결제 시 적용',
+    '주말에만 사용 가능',
+    '평일 한정 혜택',
+    '5만원 이상 구매 시 적용'
+  ],
+  
+  // 쿠폰 사용 안내 (how)
+  'coupon-how': [
+    '카운터에서 QR 화면 스캔',
+    '직원에게 화면 제시',
+    '결제 시 쿠폰 화면 보여주기',
+    '입장 시 QR 코드 인증',
+    '안내데스크에서 등록 후 사용',
+    '매장 입구에서 화면 확인'
+  ],
+  
+  // 쿠폰 상세 조건 (detail)
+  'coupon-detail': [
+    '1인 1회 한정',
+    '1만원 이상 구매 시',
+    '2만원 이상 구매 시',
+    '타 할인 중복 불가',
+    '현금 결제 시에만 적용',
+    '주말/공휴일 제외',
+    '재고 소진 시 종료',
+    '선착순 사용 가능'
+  ],
+  
+  // 포토존 한 줄 설명 (desc)
+  'photospot-desc': [
+    '인생샷 명소 — 추천 구도',
+    '가족사진 찍기 좋은 배경',
+    '커플 사진 인기 명소',
+    '단체 사진 추천 위치',
+    '꽃 배경 정면 구도',
+    '석양 배경 황금시간 추천',
+    '야경 촬영 최적 위치',
+    '대형 포토프레임 설치'
+  ],
+  
+  // 포토존 대기 시간 (wait)
+  'photospot-wait': [
+    '대기 없음',
+    '대기 약 5분',
+    '대기 약 10분',
+    '대기 약 15분',
+    '대기 약 20분',
+    '대기 30분 이상 (주말)',
+    '평일 한산'
+  ],
+  
+  // 포토존 촬영 팁 (tip)
+  'photospot-tip': [
+    '오전 10시 이전 방문 추천',
+    '오후 4-6시 골든아워 추천',
+    '평일 방문 시 대기 짧음',
+    '역광 피해서 촬영하세요',
+    '플래시 사용 가능',
+    '삼각대 설치 가능 구역',
+    '키 큰 분은 한 걸음 뒤로'
+  ],
+  
+  // 굿즈 한 줄 설명 (desc)
+  'goods-desc': [
+    '사이즈 S/M/L 세 종류',
+    '한정판 — 재고 소진 시 종료',
+    '축제 공식 굿즈',
+    '오프라인 한정 판매',
+    '본품 + 부속품 포함',
+    '선물 포장 가능',
+    '주문 즉시 제작'
+  ],
+  
+  // 굿즈샵 안내 (goodsTip)
+  'goods-tip': [
+    '축제장 내 굿즈샵에서 구매 가능',
+    '메인 무대 옆 굿즈 부스',
+    '입장 시 굿즈 부스 위치 안내',
+    '온라인 사전 예약 시 할인',
+    '현금/카드 결제 가능',
+    '시즌 한정 — 재고 소진 시 종료'
+  ],
+  
+  // 대여소 안내 (rentalTip)
+  'rental-tip': [
+    '안내데스크에서 대여 가능',
+    '신분증 보증 후 대여',
+    '당일 반납 필수',
+    '시간당 요금 부과',
+    '분실 시 변상 책임',
+    '오전 9시부터 오후 6시까지 운영'
+  ],
+  
+  // 스탬프 안내 (stampTip)
+  'stamp-tip': [
+    '5개 스탬프 모두 모으면 완주',
+    '안내데스크에서 스탬프북 수령',
+    '각 스팟에서 스탬프 찍기',
+    '완주 후 안내데스크에 제출',
+    '하루 안에 완주 가능',
+    '스탬프 한 번 누락 시 재방문 필요'
+  ],
+  
+  // 스탬프 완주 보상 (stampReward)
+  'stamp-reward': [
+    '굿즈 1개 무료 증정',
+    '축제 한정 기념품 증정',
+    '5,000원 쿠폰 증정',
+    '머그컵 1개 증정',
+    '스티커 세트 증정',
+    '추첨 응모 자격 제공'
+  ],
+  
+  // 안전 안내 (safetyTip)
+  'safety-tip': [
+    '응급상황 시 가까운 안전센터로',
+    '약국/병원은 지도에서 확인 가능',
+    '미아 발생 시 안내데스크로',
+    '의료진 상주 — 24시간 운영',
+    '비상시 119 즉시 신고',
+    '심한 더위 시 그늘에서 휴식'
+  ]
+};
+
+// 빠른 선택 드롭다운 생성
+function makeQuickSelector(category, inputId){
+  const phrases = QUICK_PHRASES[category];
+  if(!phrases) return '';
+  
+  return `<button type="button" 
+    onclick="showQuickPhrases('${category}', '${inputId}', this)" 
+    style="padding:4px 8px;border:1px solid #e5e7eb;border-radius:5px;background:#f8fafc;font-size:11px;cursor:pointer;margin-left:4px;flex-shrink:0"
+    title="자주 쓰는 문구 선택">💡 추천</button>`;
+}
+
+// 빠른 선택 팝업 표시
+function showQuickPhrases(category, inputId, btn){
+  // 기존 팝업 제거
+  const existing = document.getElementById('quick-phrases-popup');
+  if(existing){
+    existing.remove();
+    return;
+  }
+  
+  const phrases = QUICK_PHRASES[category];
+  if(!phrases) return;
+  
+  const popup = document.createElement('div');
+  popup.id = 'quick-phrases-popup';
+  popup.style.cssText = 'position:fixed;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;z-index:10000;max-width:320px;max-height:340px;overflow-y:auto';
+  
+  const rect = btn.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 340) + 'px';
+  popup.style.top = (rect.bottom + 4) + 'px';
+  
+  popup.innerHTML = `
+    <div style="padding:8px 10px;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;margin-bottom:4px">
+      💡 자주 쓰는 문구 (클릭해서 선택)
+    </div>
+    ${phrases.map(phrase => `
+      <div onclick="applyQuickPhrase('${inputId}', this.dataset.text)" 
+           data-text="${phrase.replace(/'/g, "\\'").replace(/"/g, '&quot;')}"
+           style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:13px;color:#1f2937"
+           onmouseover="this.style.background='#f1f5f9'"
+           onmouseout="this.style.background=''">
+        ${phrase}
+      </div>
+    `).join('')}
+  `;
+  
+  document.body.appendChild(popup);
+  
+  // 바깥 클릭 시 닫기
+  setTimeout(() => {
+    document.addEventListener('click', closeQuickPhrases, {once: true});
+  }, 0);
+}
+
+function closeQuickPhrases(e){
+  const popup = document.getElementById('quick-phrases-popup');
+  if(popup && !popup.contains(e.target)){
+    popup.remove();
+  } else if(popup){
+    setTimeout(() => {
+      document.addEventListener('click', closeQuickPhrases, {once: true});
+    }, 0);
+  }
+}
+
+// 문구 선택 시 입력란에 적용
+function applyQuickPhrase(inputId, text){
+  const input = document.getElementById(inputId);
+  if(input){
+    input.value = text;
+    // oninput 이벤트 트리거 (저장 데이터 동기화)
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+  }
+  
+  // input id가 없으면 활성화된 input에 적용 (배열 항목용)
+  if(!input){
+    // 가장 가까운 input 찾기
+    const popup = document.getElementById('quick-phrases-popup');
+    if(popup){
+      // 팝업이 떠있던 위치 근처 input에 적용 — 정확한 로직은 inputId 기반
+    }
+  }
+  
+  const popup = document.getElementById('quick-phrases-popup');
+  if(popup) popup.remove();
+}
+
+// 배열 항목용 빠른 선택 (item 인덱스 + key 기반)
+function showQuickPhrasesForItem(category, listType, idx, key, btn){
+  const existing = document.getElementById('quick-phrases-popup');
+  if(existing){ existing.remove(); return; }
+  
+  const phrases = QUICK_PHRASES[category];
+  if(!phrases) return;
+  
+  const popup = document.createElement('div');
+  popup.id = 'quick-phrases-popup';
+  popup.style.cssText = 'position:fixed;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.12);padding:6px;z-index:10000;max-width:320px;max-height:340px;overflow-y:auto';
+  
+  const rect = btn.getBoundingClientRect();
+  popup.style.left = Math.min(rect.left, window.innerWidth - 340) + 'px';
+  popup.style.top = (rect.bottom + 4) + 'px';
+  
+  popup.innerHTML = `
+    <div style="padding:8px 10px;font-size:12px;color:#64748b;font-weight:600;border-bottom:1px solid #f1f5f9;margin-bottom:4px">
+      💡 자주 쓰는 문구 (클릭해서 선택)
+    </div>
+    ${phrases.map(phrase => {
+      const safeText = phrase.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `
+        <div onclick="applyQuickPhraseToItem('${listType}', ${idx}, '${key}', this.dataset.text, this)" 
+             data-text="${safeText}"
+             style="padding:8px 10px;cursor:pointer;border-radius:6px;font-size:13px;color:#1f2937"
+             onmouseover="this.style.background='#f1f5f9'"
+             onmouseout="this.style.background=''">
+          ${phrase}
+        </div>`;
+    }).join('')}
+  `;
+  
+  document.body.appendChild(popup);
+  
+  setTimeout(() => {
+    document.addEventListener('click', closeQuickPhrases, {once: true});
+  }, 0);
+}
+
+function applyQuickPhraseToItem(listType, idx, key, text, el){
+  // 배열 항목에 적용
+  let items = null;
+  let updateFn = null;
+  let renderFn = null;
+  
+  switch(listType){
+    case 'coupon': items = _couponItems; updateFn = updateCouponItem; renderFn = renderCouponList; break;
+    case 'photo': items = _photoItems; updateFn = updatePhotoItem; renderFn = renderPhotoList; break;
+    case 'goods': items = _goodsItems; updateFn = updateGoodsItem; renderFn = renderGoodsList; break;
+  }
+  
+  if(items && items[idx]){
+    items[idx][key] = text;
+    if(renderFn) renderFn(items);
+  }
+  
+  const popup = document.getElementById('quick-phrases-popup');
+  if(popup) popup.remove();
 }
 
 // ───────────────────────────────────────────────────────
