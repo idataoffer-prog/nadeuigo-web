@@ -580,8 +580,13 @@ function openEdit(docId){
         <div class="form-section">
           <div class="section-title">🖼 사진</div>
           <div class="field">
-            <label>사진 URL</label>
-            <input type="text" id="m-img" value="${escapeAttr(f.img||'')}" placeholder="https://..." oninput="updatePreview()">
+            <label>사진 업로드 또는 URL 입력</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+              <button type="button" class="add-btn" onclick="document.getElementById('m-img-file').click()" id="m-img-upload-btn">📁 파일 선택해서 업로드</button>
+              <input type="file" id="m-img-file" accept="image/*" style="display:none" onchange="uploadImageFile(this)">
+              <span id="m-img-upload-status" style="font-size:13px;color:#64748b"></span>
+            </div>
+            <input type="text" id="m-img" value="${escapeAttr(f.img||'')}" placeholder="또는 URL 직접 입력: https://..." oninput="updatePreview()">
             <div class="img-preview" id="m-preview">${f.img?`<img src="${escapeAttr(f.img)}" onerror="this.outerHTML='<div class=ph>이미지 로드 실패</div>'">`:'<div class="ph">미리보기</div>'}</div>
           </div>
         </div>
@@ -1534,6 +1539,108 @@ function updatePreview(){
   const box = document.getElementById('m-preview');
   if(!url) box.innerHTML = '<div class="ph">미리보기</div>';
   else box.innerHTML = `<img src="${escapeAttr(url)}" onerror="this.outerHTML='<div class=ph>이미지 로드 실패</div>'">`;
+}
+
+// Firebase Storage 이미지 업로드
+async function uploadImageFile(input){
+  const file = input.files[0];
+  if(!file) return;
+  
+  // 파일 크기 체크 (5MB 제한)
+  if(file.size > 5 * 1024 * 1024){
+    toast('파일 크기가 너무 큽니다 (최대 5MB)', 'error');
+    input.value = '';
+    return;
+  }
+  
+  // 이미지 파일인지 체크
+  if(!file.type.startsWith('image/')){
+    toast('이미지 파일만 업로드 가능합니다', 'error');
+    input.value = '';
+    return;
+  }
+  
+  const btn = document.getElementById('m-img-upload-btn');
+  const status = document.getElementById('m-img-upload-status');
+  const originalBtnText = btn.textContent;
+  
+  try {
+    // Storage 객체 확인
+    if(!storage){
+      try { storage = firebase.storage(); }
+      catch(e){
+        toast('Storage가 초기화되지 않았습니다', 'error');
+        return;
+      }
+    }
+    
+    btn.disabled = true;
+    btn.textContent = '⏳ 업로드 중...';
+    status.textContent = '0%';
+    status.style.color = '#ef8200';
+    
+    // 파일명 만들기 (한글/특수문자 안전하게)
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    const ext = file.name.split('.').pop().toLowerCase();
+    const safeName = `festivals/${timestamp}_${random}.${ext}`;
+    
+    // Storage에 업로드
+    const storageRef = storage.ref(safeName);
+    const uploadTask = storageRef.put(file);
+    
+    // 진행률 표시
+    uploadTask.on('state_changed',
+      (snapshot) => {
+        const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+        status.textContent = `${progress}%`;
+      },
+      (error) => {
+        console.error('Upload error:', error);
+        toast('업로드 실패: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.textContent = originalBtnText;
+        status.textContent = '';
+      },
+      async () => {
+        // 업로드 완료 → URL 받아오기
+        try {
+          const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+          
+          // URL을 입력란에 자동 입력
+          document.getElementById('m-img').value = downloadURL;
+          updatePreview();
+          
+          // 성공 표시
+          btn.disabled = false;
+          btn.textContent = originalBtnText;
+          status.textContent = '✓ 업로드 완료';
+          status.style.color = '#10b981';
+          toast('사진이 업로드되었습니다', 'success');
+          
+          // 3초 뒤 상태 메시지 지우기
+          setTimeout(() => {
+            status.textContent = '';
+          }, 3000);
+        } catch(e){
+          console.error('URL 가져오기 실패:', e);
+          toast('URL 가져오기 실패', 'error');
+          btn.disabled = false;
+          btn.textContent = originalBtnText;
+          status.textContent = '';
+        }
+      }
+    );
+  } catch(e) {
+    console.error('업로드 오류:', e);
+    toast('업로드 중 오류가 발생했습니다', 'error');
+    btn.disabled = false;
+    btn.textContent = originalBtnText;
+    status.textContent = '';
+  }
+  
+  // 같은 파일 다시 업로드 가능하게
+  input.value = '';
 }
 
 async function saveEdit(docId){
