@@ -284,6 +284,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
+<!-- Open Location Code (Plus Code) 라이브러리 - Google 공식 -->
+<script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
+
 <script>
 // ─────────────────────────────────────────────────────────────
 // Firebase 설정 (nadeuigo 프로젝트)
@@ -585,6 +588,16 @@ function openEdit(docId){
             </div>
             <div class="hint">시·구·동 단위로 입력하면 좌표가 자동으로 채워집니다 (OpenStreetMap)</div>
             <div id="addr-search-result" style="margin-top:6px;font-size:13px;color:#64748b"></div>
+          </div></div>
+          
+          <div class="form-row full"><div class="field">
+            <label>Plus Code 입력 (Google 지도용)</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="m-pluscode" placeholder="예: 8Q98H49R+G7 또는 H49R+G7 Seoul" style="flex:1">
+              <button type="button" class="add-btn" onclick="convertPlusCode()">🔄 좌표 변환</button>
+            </div>
+            <div class="hint">Google 지도에서 위치 클릭 시 표시되는 Plus Code를 그대로 붙여넣으세요</div>
+            <div id="pluscode-result" style="margin-top:6px;font-size:13px;color:#64748b"></div>
           </div></div>
           
           <div class="form-row">
@@ -2047,6 +2060,154 @@ async function searchAddress(){
   } catch(e) {
     console.error('주소 검색 오류:', e);
     resultBox.innerHTML = `<span style="color:#ef4444">❌ 검색 실패: ${e.message}</span>`;
+  }
+}
+
+// ───────────────────────────────────────────────────────
+// Plus Code (Open Location Code) → 좌표 변환
+// ───────────────────────────────────────────────────────
+
+// 수동 Plus Code 디코딩 (라이브러리 없이도 작동)
+// 참고: https://github.com/google/open-location-code
+const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
+function decodePlusCodeManually(code){
+  // "+" 와 "0" 제거하고 대문자로
+  let clean = code.replace(/[+0]/g, '').toUpperCase();
+  if(clean.length < 10) return null;
+  
+  // 처음 10자만 사용 (정확도)
+  const usable = clean.substring(0, 10);
+  
+  let lat = -90, lng = -180;
+  let latRes = 20, lngRes = 20;
+  
+  for(let i = 0; i < usable.length; i += 2){
+    const latIdx = OLC_ALPHABET.indexOf(usable[i]);
+    const lngIdx = OLC_ALPHABET.indexOf(usable[i + 1]);
+    
+    if(latIdx < 0 || lngIdx < 0) return null;
+    
+    lat += latIdx * latRes;
+    lng += lngIdx * lngRes;
+    
+    latRes /= 20;
+    lngRes /= 20;
+  }
+  
+  // 중심점
+  return {
+    lat: lat + latRes * 10,
+    lng: lng + lngRes * 10
+  };
+}
+
+async function convertPlusCode(){
+  const input = document.getElementById('m-pluscode').value.trim();
+  const resultBox = document.getElementById('pluscode-result');
+  
+  if(!input){
+    resultBox.innerHTML = '<span style="color:#ef4444">Plus Code를 입력해주세요</span>';
+    return;
+  }
+  
+  resultBox.innerHTML = '<span style="color:#ef8200">⏳ 변환 중...</span>';
+  
+  try {
+    let fullCode = input;
+    let lat, lng;
+    
+    // 짧은 코드 + 지역명 형태 (예: "H49R+G7 Seoul")
+    if(input.includes(' ') && !input.match(/^[A-Z0-9+]{10,}$/i)){
+      const parts = input.split(/\s+/);
+      const codePart = parts[0];
+      const locationPart = parts.slice(1).join(' ');
+      
+      // 지역명을 먼저 좌표로 변환 (Nominatim 사용)
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationPart)}&format=json&limit=1&countrycodes=kr`;
+      const response = await fetch(url);
+      const results = await response.json();
+      
+      if(!results || results.length === 0){
+        resultBox.innerHTML = `<span style="color:#ef4444">❌ "${locationPart}" 지역을 찾을 수 없습니다</span>`;
+        return;
+      }
+      
+      const refLat = parseFloat(results[0].lat);
+      const refLng = parseFloat(results[0].lon);
+      
+      // 짧은 코드를 전체 코드로 복구 (라이브러리 우선)
+      if(typeof OpenLocationCode !== 'undefined'){
+        try {
+          const olc = new OpenLocationCode();
+          fullCode = olc.recoverNearest(codePart, refLat, refLng);
+        } catch(e){
+          // 라이브러리 실패 시 간단한 추정
+          // 짧은 코드는 보통 6-8자 + "+" + 2-3자
+          // 지역 좌표 기반으로 앞 글자 추정
+          resultBox.innerHTML = '<span style="color:#ef4444">❌ 짧은 코드 변환 실패. 전체 Plus Code(예: 8Q98H49R+G7)를 사용해주세요</span>';
+          return;
+        }
+      } else {
+        resultBox.innerHTML = '<span style="color:#ef4444">❌ 짧은 코드 처리에는 라이브러리가 필요합니다. 페이지를 새로고침하거나 전체 Plus Code를 사용해주세요</span>';
+        return;
+      }
+    }
+    
+    // 전체 코드 디코딩 (라이브러리 우선, 실패 시 수동)
+    if(typeof OpenLocationCode !== 'undefined'){
+      try {
+        const olc = new OpenLocationCode();
+        if(!olc.isValid(fullCode)){
+          throw new Error('Invalid code');
+        }
+        const decoded = olc.decode(fullCode);
+        lat = decoded.latitudeCenter;
+        lng = decoded.longitudeCenter;
+      } catch(e){
+        // 라이브러리로 실패 시 수동 디코딩
+        const manual = decodePlusCodeManually(fullCode);
+        if(!manual){
+          throw new Error('올바른 Plus Code 형식이 아닙니다');
+        }
+        lat = manual.lat;
+        lng = manual.lng;
+      }
+    } else {
+      // 라이브러리 없으면 수동 디코딩
+      const manual = decodePlusCodeManually(fullCode);
+      if(!manual){
+        resultBox.innerHTML = `
+          <span style="color:#ef4444">❌ 올바른 Plus Code가 아닙니다</span><br>
+          <span style="font-size:12px;color:#64748b">
+          💡 형식 예시:<br>
+          • 전체 코드: <code>8Q98H49R+G7</code><br>
+          • 짧은 코드: <code>H49R+G7 Seoul</code> (지역명 필수)<br>
+          • Google 지도에서 위치 클릭 → 좌표 칸 아래에 표시됨
+          </span>`;
+        return;
+      }
+      lat = manual.lat;
+      lng = manual.lng;
+    }
+    
+    // 한국 좌표 범위 확인
+    if(lat < 33 || lat > 43 || lng < 124 || lng > 132){
+      resultBox.innerHTML = `<span style="color:#ef4444">⚠️ 한국 좌표 범위가 아닙니다 (위도: ${lat.toFixed(4)}, 경도: ${lng.toFixed(4)})</span>`;
+      return;
+    }
+    
+    // 좌표 자동 입력
+    document.getElementById('m-lat').value = lat.toFixed(6);
+    document.getElementById('m-lng').value = lng.toFixed(6);
+    
+    resultBox.innerHTML = `
+      <span style="color:#10b981">✓ 좌표: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+      <span style="font-size:12px;color:#64748b">📍 Plus Code: ${fullCode}</span></span>`;
+    toast('Plus Code가 좌표로 변환되었습니다', 'success');
+    
+  } catch(e) {
+    console.error('Plus Code 변환 오류:', e);
+    resultBox.innerHTML = `<span style="color:#ef4444">❌ 변환 실패: ${e.message}</span>`;
   }
 }
 
