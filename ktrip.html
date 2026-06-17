@@ -3875,6 +3875,25 @@ function buildDetail(){
   // services
   const sl1=div('sec-lbl','축제 서비스');
   const sg=div('service-grid');
+  
+  // 각 카테고리별로 데이터가 있는지 확인하는 함수
+  const hasData = (catId) => {
+    if(!S.item) return false;
+    switch(catId){
+      case 'program': return Array.isArray(S.item.programs) && S.item.programs.length > 0;
+      case 'coupon': return Array.isArray(S.item.coupons) && S.item.coupons.length > 0;
+      case 'photospot': return Array.isArray(S.item.photospots) && S.item.photospots.length > 0;
+      case 'amenities': return Array.isArray(S.item.amenities) && S.item.amenities.length > 0;
+      case 'goods': return Array.isArray(S.item.goods) && S.item.goods.length > 0;
+      case 'rental': return Array.isArray(S.item.rentals) && S.item.rentals.length > 0;
+      case 'stamp': return Array.isArray(S.item.stamps) && S.item.stamps.length > 0;
+      case 'safety': 
+        return (Array.isArray(S.item.safetyCenters) && S.item.safetyCenters.length > 0) ||
+               (Array.isArray(S.item.safetyEmergencies) && S.item.safetyEmergencies.length > 0);
+      default: return true;
+    }
+  };
+  
   [{id:'program',n:'프로그램',ic:'calendar',sc:'#2563eb',bg:'#eff6ff'},
    {id:'coupon',n:'쿠폰함',ic:'ticket',sc:'#dc2626',bg:'#fef2f2'},
    {id:'photospot',n:'포토존',ic:'camera',sc:'#7c3aed',bg:'#faf5ff'},
@@ -3884,11 +3903,30 @@ function buildDetail(){
    {id:'stamp',n:'스탬프투어',ic:'pin',sc:'#4f46e5',bg:'#eef2ff'},
    {id:'safety',n:'안전센터',ic:'shield',sc:'#e11d48',bg:'#fff1f2'}
   ].forEach(s=>{
-    const b=btn('svc-btn','',()=>openInfo(s.id,s.n));
-    const siw=div('svc-icon');css(siw,{background:s.bg});
-    const ico=icon(s.ic);css(ico,{stroke:s.sc});
+    const isAvailable = hasData(s.id);
+    const b=btn('svc-btn','',()=>{
+      if(!isAvailable){
+        alert('이 축제에는 ' + s.n + ' 정보가 없습니다.');
+        return;
+      }
+      openInfo(s.id,s.n);
+    });
+    
+    // 비활성화 스타일 (회색 처리)
+    if(!isAvailable){
+      css(b, {opacity: '0.4', cursor: 'not-allowed', filter: 'grayscale(80%)'});
+    }
+    
+    const siw=div('svc-icon');
+    css(siw,{background: isAvailable ? s.bg : '#f1f5f9'});
+    const ico=icon(s.ic);
+    css(ico,{stroke: isAvailable ? s.sc : '#94a3b8'});
     siw.appendChild(ico);
-    const sn=div('svc-name');setText(sn,s.n);
+    const sn=div('svc-name');
+    setText(sn,s.n);
+    if(!isAvailable){
+      css(sn, {color: '#94a3b8'});
+    }
     ap(b,siw,sn);sg.appendChild(b);
   });
 

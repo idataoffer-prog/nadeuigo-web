@@ -759,6 +759,28 @@ function openEdit(docId){
 // 프로그램 항목 관리
 let _progItems = [];
 
+// 시간 옵션 생성 (00:00 ~ 23:30, 30분 단위)
+function getTimeOptions(selectedValue){
+  let options = '<option value="">선택</option>';
+  for(let h = 0; h < 24; h++){
+    for(let m = 0; m < 60; m += 30){
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      const time = `${hh}:${mm}`;
+      // 한국어 표시 (오전/오후 X시 X분)
+      let display;
+      if(h === 0) display = `오전 12:${mm}`;
+      else if(h < 12) display = `오전 ${h}:${mm}`;
+      else if(h === 12) display = `오후 12:${mm}`;
+      else display = `오후 ${h - 12}:${mm}`;
+      
+      const selected = (selectedValue === time || selectedValue === display) ? 'selected' : '';
+      options += `<option value="${time}" ${selected}>${display} (${time})</option>`;
+    }
+  }
+  return options;
+}
+
 function renderProgList(items){
   _progItems = items.map(it=>({...it}));
   const box = document.getElementById('prog-list');
@@ -771,8 +793,12 @@ function renderProgList(items){
     <div class="prog-item">
       <button type="button" class="del-x" onclick="removeProgItem(${i})" title="삭제">×</button>
       <div class="row">
-        <div class="lbl">시간</div>
-        <input type="text" placeholder="예: 오후 2:00" value="${escapeAttr(it.time||'')}" oninput="updateProgItem(${i},'time',this.value)">
+        <div class="lbl">시작 시간</div>
+        <select onchange="updateProgItem(${i},'time',this.value)" style="padding:8px;border:1px solid #e5e7eb;border-radius:6px">
+          ${getTimeOptions(it.time)}
+        </select>
+        <span style="font-size:13px;color:#94a3b8;margin-left:8px">또는</span>
+        <input type="text" placeholder="직접 입력 (예: 오후 2:00)" value="${(it.time && !it.time.match(/^\d{2}:\d{2}$/)) ? escapeAttr(it.time) : ''}" oninput="updateProgItem(${i},'time',this.value)" style="flex:1;margin-left:4px">
       </div>
       <div class="row">
         <div class="lbl">행사명</div>
