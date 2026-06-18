@@ -284,9 +284,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
-<!-- Open Location Code (Plus Code) 라이브러리 - Google 공식 -->
-<script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
-
 <script>
 // ─────────────────────────────────────────────────────────────
 // Firebase 설정 (nadeuigo 프로젝트)
@@ -2065,40 +2062,113 @@ async function searchAddress(){
 
 // ───────────────────────────────────────────────────────
 // Plus Code (Open Location Code) → 좌표 변환
+// 라이브러리 없이 자체 구현
 // ───────────────────────────────────────────────────────
 
-// 수동 Plus Code 디코딩 (라이브러리 없이도 작동)
-// 참고: https://github.com/google/open-location-code
 const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
-function decodePlusCodeManually(code){
-  // "+" 와 "0" 제거하고 대문자로
-  let clean = code.replace(/[+0]/g, '').toUpperCase();
-  if(clean.length < 10) return null;
-  
-  // 처음 10자만 사용 (정확도)
-  const usable = clean.substring(0, 10);
+const OLC_BASE = 20;
+
+// Plus Code 전체 코드 디코딩 (예: "8Q98H49R+G7")
+function olcDecode(code){
+  let clean = code.replace(/[+0\s]/g, '').toUpperCase();
+  if(clean.length < 8) return null;
   
   let lat = -90, lng = -180;
-  let latRes = 20, lngRes = 20;
+  let latRes = OLC_BASE, lngRes = OLC_BASE;
   
-  for(let i = 0; i < usable.length; i += 2){
-    const latIdx = OLC_ALPHABET.indexOf(usable[i]);
-    const lngIdx = OLC_ALPHABET.indexOf(usable[i + 1]);
-    
+  // 처음 10자는 페어 (각 자리 2개씩 = 5쌍)
+  const pairCount = Math.min(10, clean.length);
+  for(let i = 0; i < pairCount; i += 2){
+    if(i + 1 >= clean.length) break;
+    const latIdx = OLC_ALPHABET.indexOf(clean[i]);
+    const lngIdx = OLC_ALPHABET.indexOf(clean[i + 1]);
     if(latIdx < 0 || lngIdx < 0) return null;
     
     lat += latIdx * latRes;
     lng += lngIdx * lngRes;
-    
-    latRes /= 20;
-    lngRes /= 20;
+    latRes /= OLC_BASE;
+    lngRes /= OLC_BASE;
   }
   
-  // 중심점
+  // 11자부터는 grid (한 자리에 위도/경도 둘 다 인코딩)
+  // 각 자리: 위 4 × 5 그리드 (4 위도, 5 경도)
+  let gridLatRes = latRes * OLC_BASE;
+  let gridLngRes = lngRes * OLC_BASE;
+  
+  for(let i = 10; i < clean.length; i++){
+    const idx = OLC_ALPHABET.indexOf(clean[i]);
+    if(idx < 0) return null;
+    
+    if(i === 10){
+      gridLatRes = latRes; // 20에서 시작
+      gridLngRes = lngRes;
+    }
+    
+    const row = Math.floor(idx / 5);
+    const col = idx % 5;
+    
+    gridLatRes /= 4;
+    gridLngRes /= 5;
+    
+    lat += row * gridLatRes;
+    lng += col * gridLngRes;
+  }
+  
+  // 중심점 반환
+  const finalLatRes = clean.length <= 10 ? latRes * OLC_BASE : gridLatRes;
+  const finalLngRes = clean.length <= 10 ? lngRes * OLC_BASE : gridLngRes;
+  
   return {
-    lat: lat + latRes * 10,
-    lng: lng + lngRes * 10
+    lat: lat + finalLatRes / 2,
+    lng: lng + finalLngRes / 2
   };
+}
+
+// 짧은 Plus Code → 전체 코드 복구 (기준 좌표 필요)
+function olcRecoverNearest(shortCode, refLat, refLng){
+  // shortCode 예: "H49R+G7" (8자)
+  // 전체 코드는 10-11자
+  // 누락된 앞부분 4-6자를 기준 좌표로부터 추정
+  
+  const cleanShort = shortCode.replace(/\s/g, '').toUpperCase();
+  if(!cleanShort.includes('+')) return null;
+  
+  // 누락된 앞 자릿수 추정
+  const padding = 10 - (cleanShort.length - 1); // -1은 '+' 빼기
+  
+  // 기준 좌표를 OLC 인코딩
+  const refEncoded = olcEncodeFull(refLat, refLng);
+  if(!refEncoded) return null;
+  
+  // 앞부분 padding 자리만큼 가져와서 합치기
+  const prefix = refEncoded.substring(0, padding);
+  const fullCode = prefix + cleanShort;
+  
+  return fullCode;
+}
+
+// 좌표 → 전체 Plus Code 인코딩 (기준점 만들기용)
+function olcEncodeFull(lat, lng){
+  let latVal = lat + 90;
+  let lngVal = lng + 180;
+  
+  let code = '';
+  let latRes = OLC_BASE;
+  let lngRes = OLC_BASE;
+  
+  // 10자리 (5쌍) 페어 인코딩
+  for(let i = 0; i < 5; i++){
+    const latDigit = Math.floor(latVal / latRes);
+    const lngDigit = Math.floor(lngVal / lngRes);
+    code += OLC_ALPHABET[latDigit] + OLC_ALPHABET[lngDigit];
+    latVal -= latDigit * latRes;
+    lngVal -= lngDigit * lngRes;
+    latRes /= OLC_BASE;
+    lngRes /= OLC_BASE;
+  }
+  
+  // '+' 삽입 (8번째 자리 다음)
+  return code.substring(0, 8) + '+' + code.substring(8);
 }
 
 async function convertPlusCode(){
@@ -2113,17 +2183,23 @@ async function convertPlusCode(){
   resultBox.innerHTML = '<span style="color:#ef8200">⏳ 변환 중...</span>';
   
   try {
-    let fullCode = input;
+    let fullCode = input.replace(/\s+/g, ' ').trim();
     let lat, lng;
     
-    // 짧은 코드 + 지역명 형태 (예: "H49R+G7 Seoul")
-    if(input.includes(' ') && !input.match(/^[A-Z0-9+]{10,}$/i)){
-      const parts = input.split(/\s+/);
-      const codePart = parts[0];
+    // 짧은 코드 + 지역명 형태 (예: "J37F+X5 서울특별시")
+    const parts = fullCode.split(/\s+/);
+    const codePart = parts[0].toUpperCase();
+    
+    // 코드 부분에 '+'가 있고, '+' 앞이 8자 미만이면 짧은 코드
+    const plusIdx = codePart.indexOf('+');
+    if(plusIdx > 0 && plusIdx < 8 && parts.length > 1){
+      // 짧은 코드 처리
       const locationPart = parts.slice(1).join(' ');
       
-      // 지역명을 먼저 좌표로 변환 (Nominatim 사용)
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationPart)}&format=json&limit=1&countrycodes=kr`;
+      resultBox.innerHTML = '<span style="color:#ef8200">⏳ 지역 좌표 검색 중...</span>';
+      
+      // 지역명을 먼저 좌표로 변환
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationPart)}&format=json&limit=1&countrycodes=kr&accept-language=ko`;
       const response = await fetch(url);
       const results = await response.json();
       
@@ -2135,60 +2211,34 @@ async function convertPlusCode(){
       const refLat = parseFloat(results[0].lat);
       const refLng = parseFloat(results[0].lon);
       
-      // 짧은 코드를 전체 코드로 복구 (라이브러리 우선)
-      if(typeof OpenLocationCode !== 'undefined'){
-        try {
-          const olc = new OpenLocationCode();
-          fullCode = olc.recoverNearest(codePart, refLat, refLng);
-        } catch(e){
-          // 라이브러리 실패 시 간단한 추정
-          // 짧은 코드는 보통 6-8자 + "+" + 2-3자
-          // 지역 좌표 기반으로 앞 글자 추정
-          resultBox.innerHTML = '<span style="color:#ef4444">❌ 짧은 코드 변환 실패. 전체 Plus Code(예: 8Q98H49R+G7)를 사용해주세요</span>';
-          return;
-        }
-      } else {
-        resultBox.innerHTML = '<span style="color:#ef4444">❌ 짧은 코드 처리에는 라이브러리가 필요합니다. 페이지를 새로고침하거나 전체 Plus Code를 사용해주세요</span>';
+      // 짧은 코드 → 전체 코드 복구
+      const recovered = olcRecoverNearest(codePart, refLat, refLng);
+      if(!recovered){
+        resultBox.innerHTML = '<span style="color:#ef4444">❌ Plus Code 복구에 실패했습니다</span>';
         return;
       }
+      fullCode = recovered;
+    } else {
+      // 전체 코드 형태
+      fullCode = codePart;
     }
     
-    // 전체 코드 디코딩 (라이브러리 우선, 실패 시 수동)
-    if(typeof OpenLocationCode !== 'undefined'){
-      try {
-        const olc = new OpenLocationCode();
-        if(!olc.isValid(fullCode)){
-          throw new Error('Invalid code');
-        }
-        const decoded = olc.decode(fullCode);
-        lat = decoded.latitudeCenter;
-        lng = decoded.longitudeCenter;
-      } catch(e){
-        // 라이브러리로 실패 시 수동 디코딩
-        const manual = decodePlusCodeManually(fullCode);
-        if(!manual){
-          throw new Error('올바른 Plus Code 형식이 아닙니다');
-        }
-        lat = manual.lat;
-        lng = manual.lng;
-      }
-    } else {
-      // 라이브러리 없으면 수동 디코딩
-      const manual = decodePlusCodeManually(fullCode);
-      if(!manual){
-        resultBox.innerHTML = `
-          <span style="color:#ef4444">❌ 올바른 Plus Code가 아닙니다</span><br>
-          <span style="font-size:12px;color:#64748b">
-          💡 형식 예시:<br>
-          • 전체 코드: <code>8Q98H49R+G7</code><br>
-          • 짧은 코드: <code>H49R+G7 Seoul</code> (지역명 필수)<br>
-          • Google 지도에서 위치 클릭 → 좌표 칸 아래에 표시됨
-          </span>`;
-        return;
-      }
-      lat = manual.lat;
-      lng = manual.lng;
+    // 디코딩
+    const decoded = olcDecode(fullCode);
+    if(!decoded){
+      resultBox.innerHTML = `
+        <span style="color:#ef4444">❌ 올바른 Plus Code가 아닙니다</span><br>
+        <span style="font-size:12px;color:#64748b">
+        💡 형식 예시:<br>
+        • 전체 코드: <code>8Q98H49R+G7</code><br>
+        • 짧은 코드: <code>H49R+G7 Seoul</code> 또는 <code>J37F+X5 서울특별시</code><br>
+        • Google 지도에서 위치 클릭 → 좌표 칸 아래에 표시됨
+        </span>`;
+      return;
     }
+    
+    lat = decoded.lat;
+    lng = decoded.lng;
     
     // 한국 좌표 범위 확인
     if(lat < 33 || lat > 43 || lng < 124 || lng > 132){
