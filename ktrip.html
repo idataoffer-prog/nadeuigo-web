@@ -210,6 +210,13 @@ body{display:flex;align-items:center;justify-content:center;}
 .live-info-title{font-size:16px;font-weight:900;color:#fff;line-height:1.3;margin-bottom:6px;letter-spacing:-.01em;}
 .live-info-date{font-size:11px;font-weight:600;color:rgba(255,255,255,.8);background:rgba(255,255,255,.15);backdrop-filter:blur(4px);padding:3px 9px;border-radius:9999px;display:inline-block;}
 
+/* ── VESTOR 운영 축제 강조 스타일 (모던 미니멀) ── */
+.vestor-official{box-shadow:0 6px 20px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);}
+.vestor-badge-card{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:4px;background:#000;color:#fff;font-size:10px;font-weight:800;padding:5px 10px;border-radius:4px;letter-spacing:.06em;z-index:2;text-transform:uppercase;}
+.vestor-badge-card::before{content:'';display:inline-block;width:5px;height:5px;background:#ef8200;border-radius:50%;}
+.vestor-badge-small{position:absolute;top:8px;left:8px;background:#000;color:#fff;font-size:9px;font-weight:800;padding:4px 8px;border-radius:3px;z-index:2;letter-spacing:.05em;text-transform:uppercase;}
+.vestor-official-small{box-shadow:0 3px 10px rgba(0,0,0,.08),0 1px 3px rgba(0,0,0,.04);}
+
 /* ── Small scroll cards ── */
 .small-scroll{display:flex;overflow-x:auto;gap:14px;padding:0 20px 8px;}
 .small-card{flex-shrink:0;width:152px;cursor:pointer;}
@@ -593,6 +600,7 @@ body{display:flex;align-items:center;justify-content:center;}
 .detail-sub{font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px;font-weight:500;}
 .detail-sub svg{width:14px;height:14px;stroke:#94a3b8;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
 .info-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 22px;margin-bottom:36px;}
+.info-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:0 22px;margin-bottom:36px;}
 .info-card{background:#f8fafc;border-radius:20px;padding:16px 12px;text-align:center;cursor:pointer;border:1px solid #f1f5f9;transition:transform .15s;}
 .info-card:active{transform:scale(.94);}
 .info-val{font-size:18px;font-weight:800;margin-bottom:3px;}
@@ -754,6 +762,7 @@ function icon(name,cls=''){
 let S={
   tab:'home',cat:'추천',mapFilter:'전체',chatTab:'동행',
   item:null,sub:null,subData:{title:'',content:''},
+  showSearch:false,searchQuery:'',searchHistory:[],
   congTab:'realtime',rating:5,showNotif:false,showDna:false,dnaStep:0,dnaAnswers:[],dnaHistory:[{
     id:1,date:'2026.03.25',typeKey:'A',badge:'벚꽃 낭만형',emoji:'🌸',
     title:'벚꽃 낭만형',
@@ -767,59 +776,8 @@ let S={
   mateFestFilter:'전체',mateView:null,selectedMate:null,
   writeStep:0,writeData:{},
   chatRoomId:null,chatMessages:{},chatInput:'',
-  mates:[
-    {id:1,festivalId:10,festName:'서울 벚꽃축제',festDate:'04.04-04.08',region:'서울',
-     meetDate:'04.05',meetTime:'13:00',totalSlots:4,filledSlots:2,
-     ageRange:'20-30대',gender:'누구나',carpool:false,costPerPerson:15000,
-     title:'여의도 벚꽃 같이 보실 분 구해요 🌸 사진 품앗이해요!',
-     desc:'혼자 오시는 분들 환영해요! 한강 피크닉 같이하고 사진도 찍어드립니다. 서로 좋은 사진 남겨가요 :) 오후 1시 여의나루역 2번 출구에서 만나요.',
-     author:'여행자K',authorAge:'26',authorGender:'여',authorColor:'#ef8200',
-     tags:['사진찍기','피크닉','혼자참여OK'],
-     status:'open',dday:7,isMe:true,
-     applicants:[
-       {id:'a1',name:'봄나들이',age:'24',gender:'여',bio:'혼자 가려했는데 같이가요!',color:'#7c3aed',status:'accepted'},
-       {id:'a2',name:'김봄봄',age:'28',gender:'여',bio:'사진 좋아해요 잘 찍어드려요',color:'#0891b2',status:'pending'},
-     ],
-     chats:['a1']
-    },
-    {id:2,festivalId:11,festName:'진해 군항제',festDate:'03.25-04.05',region:'경남',
-     meetDate:'04.02',meetTime:'10:00',totalSlots:3,filledSlots:1,
-     ageRange:'20-40대',gender:'누구나',carpool:true,costPerPerson:12000,
-     title:'진해 군항제 당일치기 🚗 카풀 동행 구해요 (부산 출발)',
-     desc:'부산 서면에서 출발 예정이에요. 기름값 n분의1 합시다. 오전 10시 출발, 저녁 7시 귀환 예정.',
-     author:'드라이버Kim',authorAge:'31',authorGender:'남',authorColor:'#0891b2',
-     tags:['카풀','당일치기','부산출발'],
-     status:'open',dday:3,isMe:false,
-     applicants:[],chats:[]
-    },
-    {id:3,festivalId:10,festName:'서울 벚꽃축제',festDate:'04.04-04.08',region:'서울',
-     meetDate:'04.06',meetTime:'18:00',totalSlots:2,filledSlots:2,
-     ageRange:'20대',gender:'여성만',carpool:false,costPerPerson:20000,
-     title:'🌙 야간 벚꽃 같이 보실 여성분 구해요',
-     desc:'밤에 조명 켜진 벚꽃이 너무 예뻐요. 저녁 같이 먹고 야경도 즐겨요!',
-     author:'달빛여행',authorAge:'23',authorGender:'여',authorColor:'#7c3aed',
-     tags:['야간','여성전용','저녁식사'],
-     status:'closed',dday:9,isMe:false,
-     applicants:[],chats:[]
-    },
-    {id:4,festivalId:13,festName:'안동 탈춤축제',festDate:'09.25-10.05',region:'경북',
-     meetDate:'09.27',meetTime:'11:00',totalSlots:5,filledSlots:1,
-     ageRange:'누구나',gender:'누구나',carpool:false,costPerPerson:45000,
-     title:'안동 탈춤축제 1박2일 🎭 같이 갈 분!',
-     desc:'안동 가서 전통 체험도 하고 찜닭 골목도 가고 싶어요! 숙소는 게스트하우스 예정.',
-     author:'전통여행자',authorAge:'29',authorGender:'남',authorColor:'#16a34a',
-     tags:['1박2일','전통문화','숙박'],
-     status:'open',dday:45,isMe:false,
-     applicants:[],chats:[]
-    },
-  ],
-  notifications:[
-    {id:1,unread:true,ic:'spark',ic_c:'#ef8200',ic_bg:'#FDF5E6',title:'서울 벚꽃축제 D-2!',desc:'여의도 벚꽃이 절정에 달했어요. 지금 예매하면 좋아요.',time:'방금 전'},
-    {id:2,unread:true,ic:'bell',ic_c:'#7c3aed',ic_bg:'#f5f3ff',title:'찜한 축제 일정 변경 안내',desc:'안동 탈춤축제 입장 시간이 오전 10시로 변경되었습니다.',time:'1시간 전'},
-    {id:3,unread:true,ic:'ticket',ic_c:'#2563eb',ic_bg:'#eff6ff',title:'쿠폰이 발급되었습니다',desc:'KT 멤버십 전통체험 15% 할인 쿠폰이 지급되었어요.',time:'오늘'},
-    {id:4,unread:false,ic:'star',ic_c:'#d97706',ic_bg:'#fffbeb',title:'내 리뷰에 좋아요가 달렸어요',desc:'김여행님이 회원님의 리뷰를 좋아합니다.',time:'어제'},
-    {id:5,unread:false,ic:'map',ic_c:'#0891b2',ic_bg:'#ecfeff',title:'진해 군항제 혼잡도 알림',desc:'현재 혼잡도 78% — 방문 전 확인해 보세요.',time:'2일 전'},
-  ],
+  mates:[],
+  notifications:[],
   festivals:[
     // ── 진행중/임박 (5월) ── 아이데이터 설치 축제 우선
     {id:101,title:"중랑 서울장미축제",loc:"서울 중랑구 묵동천",date:"05.18 - 05.25",region:'서울',rating:4.7,
@@ -1176,11 +1134,7 @@ const THEMES=[
   {n:'음악/공연',em:'🎵',ic:'music',tags:['음악','공연','버스킹','콘서트','페스티벌'],img:'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=300&q=80'},
   {n:'전통문화',em:'🏮',ic:'lantern',tags:['전통','탈춤','민속','문화','역사'],img:'https://images.unsplash.com/photo-1540959733332-e94e1b3f1081?auto=format&fit=crop&w=300&q=80'},
 ];
-const POSTS=[
-  {id:1,title:"여의도 벚꽃축제 같이 가실 분! (사진 품앗이)",type:"동행",author:"여행자K",time:"10분 전",c:3},
-  {id:2,title:"이번 주말 진해 군항제 카풀 2자리 남아요",type:"카풀",author:"드라이버",time:"1시간 전",c:8},
-  {id:3,title:"제주도 유채꽃 혼자 가는데 스냅사진 같이 찍으실 분?",type:"동행",author:"제주사랑",time:"3시간 전",c:12},
-];
+const POSTS=[];  // 실제 사용자가 작성한 모집글이 들어옴
 
 // ─── DNA Quiz Data ────────────────────────────────────────────────────────────
 const DNA_QUIZ=[
@@ -1217,7 +1171,7 @@ const DNA_QUIZ=[
     q:'누구와 함께 가실 건가요?',
     mascot:'동행의 인연이 보입니다 ✦',
     multi:false,
-    choices:["'나들이고' 동행 모집",'가족','연인/친구','혼자만의 시간'],
+    choices:["'나들이go' 동행 모집",'가족','연인/친구','혼자만의 시간'],
   },
   {
     key:'style',
@@ -1357,10 +1311,10 @@ const DNA_RESULTS={
     radar:{활동성:32,사교성:28,감성:88,경제성:85,이동성:22},
     good:'C',bad:'M',compat:'힐링다랑이형',incomp:'원정대형',
     pastel:'224,247,250','accent':'#0891b2'},
-  O:{type:'나들이고 동행 모임형',emoji:'🤝',
-    title:"'나들이고' 동행이면 더 즐거워요!",
+  O:{type:'나들이go 동행 모임형',emoji:'🤝',
+    title:"'나들이go' 동행이면 더 즐거워요!",
     desc:'혼자보다 함께가 좋아. 새로운 인연 만들고 함께 추억 쌓는 소셜 여행가.',
-    checks:["📱 '나들이고' 앱 자주 들여다봐",'🤝 모르는 사람도 친구 될 수 있어','💬 단톡방 활성도 최상','📍 만남 장소 확인 세 번 이상'],
+    checks:["📱 '나들이go' 앱 자주 들여다봐",'🤝 모르는 사람도 친구 될 수 있어','💬 단톡방 활성도 최상','📍 만남 장소 확인 세 번 이상'],
     tags:['#동행모임형','#나들이go동행','#새로운인연','#소셜여행'],
     radar:{활동성:76,사교성:98,감성:66,경제성:62,이동성:72},
     good:'A',bad:'N',compat:'열정가이드형',incomp:'평화주의형',
@@ -1453,7 +1407,107 @@ function _stateSnapshot(){
   };
 }
 
-function openDetail(f){setState({item:f,sub:null});}
+// ─── 본 축제 기록 + 개인화 추천 ─────────────────
+function recordFestivalView(festivalId, festivalTag, festivalRegion){
+  try {
+    const KEY = 'nadeurigo_viewed_festivals';
+    const stored = JSON.parse(localStorage.getItem(KEY) || '[]');
+    // 이미 있으면 제거 (최신으로 갱신)
+    const filtered = stored.filter(item => item.id !== festivalId);
+    // 맨 앞에 추가
+    filtered.unshift({
+      id: festivalId,
+      tag: festivalTag,
+      region: festivalRegion,
+      ts: Date.now()
+    });
+    // 최근 10개만 유지
+    const trimmed = filtered.slice(0, 10);
+    localStorage.setItem(KEY, JSON.stringify(trimmed));
+  } catch(e) {
+    // localStorage 사용 불가 시 무시
+  }
+}
+
+function getPersonalizedRecommendations(festivals){
+  try {
+    const KEY = 'nadeurigo_viewed_festivals';
+    const viewed = JSON.parse(localStorage.getItem(KEY) || '[]');
+    
+    // 본 축제 없으면: 혼잡도 높은 순 (인기 축제)
+    if(viewed.length === 0){
+      return {
+        title: '🔥 요즘 인기 있는 축제',
+        items: [...festivals].sort((a,b) => (b.cong||0) - (a.cong||0)).slice(0, 5),
+        isPersonal: false
+      };
+    }
+    
+    // 태그/지역 빈도 계산
+    const tagCount = {};
+    const regionCount = {};
+    viewed.forEach(v => {
+      if(v.tag) tagCount[v.tag] = (tagCount[v.tag] || 0) + 1;
+      if(v.region) regionCount[v.region] = (regionCount[v.region] || 0) + 1;
+    });
+    
+    // 가장 많이 본 태그/지역
+    const topTag = Object.keys(tagCount).sort((a,b) => tagCount[b] - tagCount[a])[0];
+    const topRegion = Object.keys(regionCount).sort((a,b) => regionCount[b] - regionCount[a])[0];
+    
+    // 본 축제 ID 목록 (제외용)
+    const viewedIds = viewed.map(v => v.id);
+    
+    // 점수 매기기
+    const scored = festivals
+      .filter(f => !viewedIds.includes(f.id || f.title)) // 안 본 축제만
+      .map(f => {
+        let score = 0;
+        if(f.tag === topTag) score += 10;        // 태그 일치
+        if(f.region === topRegion) score += 5;   // 지역 일치
+        if(f.cong) score += (f.cong / 20);       // 혼잡도 보정
+        return { festival: f, score };
+      })
+      .filter(x => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+    
+    // 결과가 부족하면 인기 축제로 채움
+    let items = scored.map(x => x.festival).slice(0, 5);
+    if(items.length < 3){
+      const popular = [...festivals]
+        .filter(f => !viewedIds.includes(f.id || f.title))
+        .filter(f => !items.includes(f))
+        .sort((a,b) => (b.cong||0) - (a.cong||0))
+        .slice(0, 5 - items.length);
+      items = items.concat(popular);
+    }
+    
+    // 제목 동적 생성
+    let title;
+    if(topTag){
+      title = `🎯 ${topTag} 좋아하셨죠? 이건 어때요?`;
+    } else if(topRegion){
+      title = `🎯 ${topRegion} 지역 추천 축제`;
+    } else {
+      title = '🎯 나를 위한 추천';
+    }
+    
+    return { title, items, isPersonal: true };
+  } catch(e) {
+    // 에러 시 기본 추천
+    return {
+      title: '🎯 인기 축제',
+      items: [...festivals].sort((a,b) => (b.cong||0) - (a.cong||0)).slice(0, 5),
+      isPersonal: false
+    };
+  }
+}
+
+function openDetail(f){
+  // 본 축제 기록 (로컬 저장소)
+  recordFestivalView(f.id || f.title, f.tag, f.region);
+  setState({item:f,sub:null});
+}
 function openInfo(id,title){setState({sub:'info',subData:{id,title}});}
 
 function goBack(stateUpdate){
@@ -1603,17 +1657,25 @@ function buildHome(){
   // 1) 브랜드 라인
   const brandBar=div('home-brand-bar');
 
-  // 로고 (왼쪽)
+  // 로고 (중앙)
   const brand=div('');css(brand,{
     fontSize:'22px',fontWeight:'400',color:'#fff',
     fontFamily:"'Jua', sans-serif",
-    letterSpacing:'1px',flexShrink:'0',
+    letterSpacing:'1px',
+    position:'absolute',
+    left:'50%',
+    bottom:'16px',
+    transform:'translateX(-50%)',
+    pointerEvents:'none',
   });
   setText(brand,'나들이go');
 
+  // 왼쪽 빈 공간 (균형용)
+  const leftSpacer=div('');css(leftSpacer,{flexShrink:'0',width:'40px'});
+
   // 오른쪽 아이콘
   const acts=div('header-actions');css(acts,{flexShrink:'0'});
-  const searchBtn=btn('icon-btn','',null);searchBtn.appendChild(icon('search'));
+  const searchBtn=btn('icon-btn','',()=>setState({showSearch:true,searchQuery:''}));searchBtn.appendChild(icon('search'));
   const notifBtn=btn('icon-btn','',()=>setState({showNotif:true}));
   notifBtn.appendChild(icon('bell'));
   const unreadCount=S.notifications.filter(n=>n.unread).length;
@@ -1621,7 +1683,7 @@ function buildHome(){
     const nd=div('notif-dot');notifBtn.appendChild(nd);
   }
   ap(acts,searchBtn,notifBtn);
-  ap(brandBar,brand,acts);
+  ap(brandBar,leftSpacer,brand,acts);
 
   // 카테고리 탭 바
   const catBar=div('home-cat-bar');
@@ -1652,17 +1714,77 @@ function buildHome(){
 
     const liveScroll=div('live-scroll hscroll');
     S.festivals.slice(0,3).forEach(f=>{
-      const card=div('live-card');card.onclick=()=>openDetail(f);
+      const isVestor = f.idata === true;
+      const card=div('live-card' + (isVestor ? ' vestor-official' : ''));card.onclick=()=>openDetail(f);
       const im=el('img','');im.src=f.img;im.alt=f.title;
       const ov=div('live-ov');
+      
+      // VESTOR 배지 (운영 축제만)
+      if(isVestor){
+        const vBadge=div('vestor-badge-card');
+        vBadge.innerHTML='나들이go · OFFICIAL';
+        card.appendChild(vBadge);
+      }
+      
       const info=div('live-info');
       const title=div('live-info-title');setText(title,f.title);
       const date=div('live-info-date');setText(date,f.date);
       ap(info,title,date);
       ap(card,im,ov,info);
+      if(isVestor) card.appendChild(card.querySelector('.vestor-badge-card') || card.lastChild);
       liveScroll.appendChild(card);
     });
     ap(sec1,sh1,liveScroll);
+
+    // ── ⚡ VESTOR 공식 축제 (별도 섹션 - 다른 섹션과 통일된 스타일)
+    const vestorFests = S.festivals.filter(f => f.idata === true);
+    let vsec = null;
+    if(vestorFests.length > 0){
+      vsec = div('');
+      css(vsec, {background:'#fff', paddingTop:'22px', paddingBottom:'14px', borderBottom:'1px solid #f1f5f9'});
+      
+      // 제목 영역 (무신사/올리브영 스타일 - 큰 제목 + 작은 부제)
+      const vTitleWrap = div('');
+      css(vTitleWrap, {padding:'0 20px', marginBottom:'14px', display:'flex', justifyContent:'space-between', alignItems:'flex-end'});
+      
+      const vTitleLeft = div('');
+      const vSubTag = div('');
+      css(vSubTag, {fontSize:'10px', fontWeight:'800', color:'#ef8200', letterSpacing:'.1em', marginBottom:'3px'});
+      vSubTag.textContent = 'OFFICIAL PARTNERSHIP';
+      const vtitle = div('');
+      css(vtitle, {fontSize:'19px', fontWeight:'900', color:'#0f172a', letterSpacing:'-0.02em'});
+      vtitle.textContent = '나들이go 공식 축제';
+      ap(vTitleLeft, vSubTag, vtitle);
+      
+      const vSeeAll = btn('see-all-btn', '전체보기 ›', () => {});
+      css(vSeeAll, {marginBottom:'2px'});
+      
+      ap(vTitleWrap, vTitleLeft, vSeeAll);
+      
+      const vScroll = div('live-scroll hscroll');
+      vestorFests.slice(0, 5).forEach(f => {
+        const card = div('live-card vestor-official');
+        card.onclick = () => openDetail(f);
+        const im = el('img', '');
+        im.src = f.img;
+        im.alt = f.title;
+        const ov = div('live-ov');
+        
+        // VESTOR 배지
+        const vBadge = div('vestor-badge-card');
+        vBadge.innerHTML = '나들이go · OFFICIAL';
+        
+        const info = div('live-info');
+        const title = div('live-info-title');
+        setText(title, f.title);
+        const date = div('live-info-date');
+        setText(date, f.date);
+        ap(info, title, date);
+        ap(card, im, ov, info, vBadge);
+        vScroll.appendChild(card);
+      });
+      ap(vsec, vTitleWrap, vScroll);
+    }
 
     // ── 봄꽃명소
     const sec2=div('');css(sec2,{background:'#fff',paddingTop:'28px',paddingBottom:'14px',borderBottom:'1px solid #f1f5f9'});
@@ -1691,139 +1813,26 @@ function buildHome(){
     ap(sec2,shlbl,smallScroll);
 
 
-    // ── 1. 나들이 코스 추천
-    const secCourse=div('');css(secCourse,{background:'#fff',paddingTop:'24px',paddingBottom:'24px',borderTop:'1px solid #f1f5f9'});
-    const courseHd=div('section-hd');
-    const courseTitle=div('section-title');setText(courseTitle,'🗺 나들이 코스 추천');
-    const courseSub=div('');css(courseSub,{fontSize:'12px',color:'#94a3b8',padding:'2px 20px 14px'});
-    setText(courseSub,'축제 + 맛집 + 카페, 하나의 흐름으로');
-    ap(courseHd,courseTitle);
-    ap(secCourse,courseHd,courseSub);
-
-    const courses=[
-      {
-        img:'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=600&q=80',
-        name:'벚꽃 한 바퀴',
-        desc:'축제 → 강변 카페 → 포장마차',
-        badge:'🌸 봄 추천',
-        badgeColor:'#ff6b9d',
-        badgeBg:'#fff0f6',
-        steps:['벚꽃 축제','강변 카페','포장마차 거리'],
-        tips:['오전 일찍 가면 덜 붐벼요','강변 산책로도 놓치지 마세요','포장마차는 저녁 6시 이후 추천'],
-        items:['가벼운 겉옷','돗자리','카메라','현금'],
-      },
-      {
-        img:'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
-        name:'혼자여도 괜찮아',
-        desc:'축제 → 혼밥 맛집 → 야경 스팟',
-        badge:'🍜 솔로 코스',
-        badgeColor:'#6366f1',
-        badgeBg:'#f0f0ff',
-        steps:['감성 축제','혼밥 맛집','야경 스팟'],
-        tips:['혼자도 눈치 없이 즐길 수 있어요','맛집은 미리 예약 추천','야경은 일몰 후 30분이 절정'],
-        items:['이어폰','보조배터리','가벼운 책 한 권'],
-      },
-      {
-        img:'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&q=80',
-        name:'우리 오늘 여기서',
-        desc:'축제 → 감성 카페 → 로컬 맛집',
-        badge:'☕ 커플 추천',
-        badgeColor:'#10b981',
-        badgeBg:'#f0fdf4',
-        steps:['축제 나들이','감성 카페','로컬 맛집'],
-        tips:['카페는 미리 인스타 검색 추천','로컬 맛집은 네이버 지도 활용','여유 있게 반나절 코스예요'],
-        items:['선크림','편한 신발','물통','보조배터리'],
-      },
-    ];
-
-    const courseScroll=div('');css(courseScroll,{
-      display:'flex',gap:'16px',overflowX:'auto',
-      padding:'0 16px 8px 16px',scrollbarWidth:'none',
-      scrollSnapType:'x mandatory',
-      justifyContent:'flex-start',
-    });
-
-    courses.forEach(c=>{
-      const card=div('');css(card,{
-        flexShrink:'0',width:'60vw',maxWidth:'240px',
-        borderRadius:'20px',overflow:'hidden',
-        cursor:'pointer',
-        background:'#fff',
-        boxShadow:'6px 6px 16px rgba(0,0,0,.08), -2px -2px 8px rgba(255,255,255,.9)',
-        scrollSnapAlign:'center',
-        transition:'transform .2s',
-      });
-      card.onmousedown=()=>css(card,{transform:'scale(.97)'});
-      card.onmouseup=()=>css(card,{transform:'scale(1)'});
-      card.onclick=()=>setState({courseItem:c});
-
-      // 사진
-      const imgWrap=div('');css(imgWrap,{position:'relative',height:'140px',overflow:'hidden'});
-      const img=el('img','');img.src=c.img;img.alt=c.name;
-      css(img,{width:'100%',height:'100%',objectFit:'cover',display:'block'});
-
-      // 배지
-      const badge=div('');css(badge,{
-        position:'absolute',top:'10px',left:'10px',
-        fontSize:'11px',fontWeight:'800',color:c.badgeColor,
-        background:c.badgeBg,padding:'4px 10px',
-        borderRadius:'9999px',backdropFilter:'blur(4px)',
-        boxShadow:'0 2px 8px rgba(0,0,0,.1)',
-      });
-      setText(badge,c.badge);
-
-      // 그라디언트 오버레이
-      const overlay=div('');css(overlay,{
-        position:'absolute',bottom:'0',left:'0',right:'0',height:'60px',
-        background:'linear-gradient(transparent,rgba(0,0,0,.35))',
-      });
-      ap(imgWrap,img,badge,overlay);
-
-      // 카드 내용
-      const body=div('');css(body,{padding:'14px 16px 16px'});
-      const nm=div('');css(nm,{fontSize:'15px',fontWeight:'900',color:'#111',marginBottom:'4px',letterSpacing:'-.02em'});
-      setText(nm,c.name);
-      const ds=div('');css(ds,{fontSize:'12px',color:'#64748b',marginBottom:'12px',lineHeight:'1.5'});
-      setText(ds,c.desc);
-
-      // 코스 스텝
-      const stepRow=div('');css(stepRow,{display:'flex',alignItems:'center',gap:'4px',flexWrap:'wrap'});
-      c.steps.forEach((s,i)=>{
-        const step=div('');css(step,{
-          fontSize:'10px',fontWeight:'700',color:'#374151',
-          background:'#f8fafc',border:'1px solid #e2e8f0',
-          padding:'3px 8px',borderRadius:'6px',
-        });
-        setText(step,s);
-        stepRow.appendChild(step);
-        if(i<c.steps.length-1){
-          const arr=div('');css(arr,{fontSize:'10px',color:'#cbd5e1'});setText(arr,'→');
-          stepRow.appendChild(arr);
-        }
-      });
-
-      ap(body,nm,ds,stepRow);
-      ap(card,imgWrap,body);
-      courseScroll.appendChild(card);
-    });
-    ap(secCourse,courseScroll);
 
     // ── 2. 실시간 현장 요약
-    // ── 3. 나를 위한 추천
+    // ── 3. 나를 위한 추천 (개인화 알고리즘 기반)
+    const personalRec = getPersonalizedRecommendations(S.festivals);
+    
     const secPersonal=div('');css(secPersonal,{background:'#fff',paddingTop:'24px',paddingBottom:'20px',borderTop:'1px solid #f1f5f9'});
     const personalHd=div('section-hd');
     const personalTitle=div('section-title');setText(personalTitle,'🎯 나를 위한 추천');
     const personalSub=div('');css(personalSub,{fontSize:'12px',color:'#94a3b8',padding:'2px 20px 12px'});
-    setText(personalSub,'최근 본 축제 기반 맞춤 제안');
+    setText(personalSub, personalRec.isPersonal ? '최근 본 축제 기반 맞춤 제안' : '아직 본 축제가 없어요. 인기 축제부터 둘러보세요!');
     ap(personalHd,personalTitle);
     ap(secPersonal,personalHd,personalSub);
 
-    // 유사 축제 추천
+    // 동적 추천 제목
     const simTitle=div('');css(simTitle,{fontSize:'13px',fontWeight:'700',color:'#374151',padding:'0 20px 8px'});
-    setText(simTitle,'벚꽃 좋아하셨죠? 이건 어때요?');
+    setText(simTitle, personalRec.title);
     ap(secPersonal,simTitle);
+    
     const simScroll=div('');css(simScroll,{display:'flex',gap:'12px',overflowX:'auto',padding:'0 20px 12px',scrollbarWidth:'none'});
-    const simFests=S.festivals.slice(0,3);
+    const simFests = personalRec.items;
     simFests.forEach(f=>{
       const card=div('');css(card,{
         flexShrink:'0',width:'140px',borderRadius:'12px',overflow:'hidden',
@@ -1839,22 +1848,6 @@ function buildHome(){
       simScroll.appendChild(card);
     });
     ap(secPersonal,simScroll);
-
-    // 준비물 체크리스트
-    const checkTitle=div('');css(checkTitle,{fontSize:'13px',fontWeight:'700',color:'#374151',padding:'4px 20px 8px'});
-    setText(checkTitle,'🎒 나들이 준비물 체크리스트');
-    const items=['☀️ 선크림','🧺 돗자리','💧 물통','🔋 보조배터리','🗺 지도 앱','💊 상비약'];
-    const checkGrid=div('');css(checkGrid,{display:'flex',flexWrap:'wrap',gap:'8px',padding:'0 20px'});
-    items.forEach(it=>{
-      const chip=div('');css(chip,{
-        fontSize:'12px',fontWeight:'600',color:'#374151',
-        background:'#f8fafc',border:'1px solid #e2e8f0',
-        padding:'6px 12px',borderRadius:'9999px',
-      });
-      setText(chip,it);
-      checkGrid.appendChild(chip);
-    });
-    ap(secPersonal,checkTitle,checkGrid);
 
     const secDna=div('');css(secDna,{background:'#f8fafc',paddingTop:'8px',paddingBottom:'4px'});
     const dnaCard=div('dna-card');dnaCard.onclick=()=>setState({showDna:true,dnaStep:0,dnaAnswers:[]});
@@ -1877,7 +1870,9 @@ function buildHome(){
     const sbAll=btn('see-all-btn','전체보기 ›',()=>setState({showAllBest:true}));
     ap(sbHd,sbTitle,sbAll);
 
-    const best3Festivals=[S.festivals[0],S.festivals[1],S.festivals[3]];
+    const best3Festivals = [...S.festivals]
+      .sort((a, b) => (b.cong || 0) - (a.cong || 0))
+      .slice(0, 3);
     const best3List=div('best3-list');
     best3Festivals.forEach((f,i)=>{
       const card=div('best3-card');card.onclick=()=>openDetail(f);
@@ -1887,10 +1882,12 @@ function buildHome(){
       const ftitle=div('best3-title');setText(ftitle,f.title);
       const floc=div('best3-loc');setText(floc,`📍 ${f.loc}`);
       const meta=div('best3-meta');
-      const fire=div('best3-fire',BEST3[i].fire);
+      // 동적 라벨: 1위는 '이번주 1위', 2위는 '급상승', 3위는 '추천'
+      const fireLabels = ['🔥 이번주 1위', '🔥 급상승', '⭐ 추천'];
+      const fire=div('best3-fire', fireLabels[i] || '🔥 인기');
       const rat=div('best3-rate');
       const rsi=icon('star');css(rsi,{width:'11px',height:'11px',stroke:'#f59e0b',fill:'#f59e0b'});
-      ap(rat,rsi,`${f.rating}`);
+      ap(rat,rsi,`${f.rating || 4.5}`);
       const congDot=div('best3-cong');
       const fc=cc(f.cong);css(congDot,{background:fc.bg});
       ap(meta,fire,rat,congDot);
@@ -1900,7 +1897,12 @@ function buildHome(){
     });
     ap(secBest,sbHd,best3List);
 
-    ap(main,sec1,sec2,secDna,secBest,secCourse,secPersonal);
+    // VESTOR 섹션을 최상단에 (지금 진행 중보다 위에)
+    if(vsec){
+      ap(main,vsec,sec1,sec2,secDna,secBest,secPersonal);
+    } else {
+      ap(main,sec1,sec2,secDna,secBest,secPersonal);
+    }
 
   } else if(S.cat==='지역별'){
     const p=div('');css(p,{background:'#f8f8f6',minHeight:'100%',paddingBottom:'40px'});
@@ -2663,23 +2665,35 @@ function buildChat(){
   } else {
     // 자유글 탭 (기존)
     const main=div('scroll-area');css(main,{padding:'16px 16px 100px',background:'#f8fafc'});
-    POSTS.forEach(p=>{
-      const card=div('post-card');
-      const topRow=div('');css(topRow,{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'});
-      const type=div(`post-type ${p.type==='동행'?'type-dong':'type-car'}`);setText(type,p.type);
-      const time=div('');css(time,{fontSize:'11px',color:'#94a3b8'});setText(time,p.time);
-      ap(topRow,type,time);
-      const title=div('');css(title,{fontWeight:'700',fontSize:'14px',color:'#0f172a',marginBottom:'8px',lineHeight:'1.4'});setText(title,p.title);
-      const bottom=div('');css(bottom,{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'#94a3b8'});
-      const authorRow=div('');css(authorRow,{display:'flex',alignItems:'center',gap:'5px'});
-      const uico=icon('user');css(uico,{width:'13px',height:'13px',stroke:'currentColor'});
-      ap(authorRow,uico,p.author);
-      const cmtRow=div('');css(cmtRow,{display:'flex',alignItems:'center',gap:'5px'});
-      const cico=icon('chat');css(cico,{width:'13px',height:'13px',stroke:'currentColor'});
-      ap(cmtRow,cico,`댓글 ${p.c}`);
-      ap(bottom,authorRow,cmtRow);
-      ap(card,topRow,title,bottom);main.appendChild(card);
-    });
+    
+    if(!POSTS.length){
+      const empty=div('empty-state');
+      ap(empty,
+        div('empty-state-icon','💬'),
+        div('empty-state-text','아직 자유글이 없어요'),
+        div('empty-state-sub','첫 번째 글을 작성해보세요!')
+      );
+      main.appendChild(empty);
+    } else {
+      POSTS.forEach(p=>{
+        const card=div('post-card');
+        const topRow=div('');css(topRow,{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'});
+        const type=div(`post-type ${p.type==='동행'?'type-dong':'type-car'}`);setText(type,p.type);
+        const time=div('');css(time,{fontSize:'11px',color:'#94a3b8'});setText(time,p.time);
+        ap(topRow,type,time);
+        const title=div('');css(title,{fontWeight:'700',fontSize:'14px',color:'#0f172a',marginBottom:'8px',lineHeight:'1.4'});setText(title,p.title);
+        const bottom=div('');css(bottom,{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'#94a3b8'});
+        const authorRow=div('');css(authorRow,{display:'flex',alignItems:'center',gap:'5px'});
+        const uico=icon('user');css(uico,{width:'13px',height:'13px',stroke:'currentColor'});
+        ap(authorRow,uico,p.author);
+        const cmtRow=div('');css(cmtRow,{display:'flex',alignItems:'center',gap:'5px'});
+        const cico=icon('chat');css(cico,{width:'13px',height:'13px',stroke:'currentColor'});
+        ap(cmtRow,cico,`댓글 ${p.c}`);
+        ap(bottom,authorRow,cmtRow);
+        ap(card,topRow,title,bottom);main.appendChild(card);
+      });
+    }
+    
     const fab=btn('fab','',null);fab.appendChild(icon('plus'));
     ap(wrap,hdr,main,fab);
   }
@@ -3845,32 +3859,29 @@ function buildDetail(){
 
   // body
   const dbody=div('detail-body');
-  const dtags=div('detail-tags');
-  const t1=div('detail-tag tag-blue','반려동물 동반');
-  const t2=div('detail-tag tag-gray','야간개장');
-  ap(dtags,t1,t2);
   const dtitle=div('detail-title');setText(dtitle,f.title);
   const dsub=div('detail-sub');
   const calIco=icon('calendar');
   ap(dsub,calIco,` ${f.date} · ${f.loc}`);
-  ap(dbody,dtags,dtitle,dsub);
+  ap(dbody,dtitle,dsub);
 
   // info cards
-  const ig=div('info-grid3');
-  const ic1=div('info-card');ic1.onclick=()=>setState({sub:'congestion'});
-  const iv1=div('info-val');css(iv1,{color:'#ef4444',fontSize:'20px'});setText(iv1,`${f.cong}%`);
-  const il1=div('info-lbl');setText(il1,c.label);ap(ic1,iv1,il1);
+  const ig=div('info-grid2');
+  const ic1=div('info-card');
+  css(ic1,{padding:'20px 16px'});
+  ic1.onclick=()=>setState({sub:'congestion'});
+  const iv1=div('info-val');css(iv1,{color:'#ef4444',fontSize:'24px',marginBottom:'5px'});setText(iv1,`${f.cong}%`);
+  const il1=div('info-lbl');css(il1,{fontSize:'11px'});setText(il1,c.label);ap(ic1,iv1,il1);
 
-  const ic2=div('info-card');ic2.onclick=()=>openInfo('weather','날씨');
-  const iv2=div('info-val');css(iv2,{fontSize:'16px'});
-  const sunIco=icon('sun');css(sunIco,{width:'16px',height:'16px',stroke:'#f59e0b',marginRight:'3px',verticalAlign:'middle'});
+  const ic2=div('info-card');
+  css(ic2,{padding:'20px 16px'});
+  ic2.onclick=()=>openInfo('weather','날씨');
+  const iv2=div('info-val');css(iv2,{fontSize:'20px',marginBottom:'5px'});
+  const sunIco=icon('sun');css(sunIco,{width:'20px',height:'20px',stroke:'#f59e0b',marginRight:'5px',verticalAlign:'middle'});
   ap(iv2,sunIco,'18°');
-  const il2=div('info-lbl','맑음');ap(ic2,iv2,il2);
+  const il2=div('info-lbl');css(il2,{fontSize:'11px'});setText(il2,'맑음');ap(ic2,iv2,il2);
 
-  const ic3=div('info-card');ic3.onclick=()=>openInfo('parking','주차/교통');
-  const iv3=div('info-val');css(iv3,{color:'#2563eb',fontSize:'17px'});setText(iv3,'만차');
-  const il3=div('info-lbl','주차 현황');ap(ic3,iv3,il3);
-  ap(ig,ic1,ic2,ic3);
+  ap(ig,ic1,ic2);
 
   // services
   const sl1=div('sec-lbl','축제 서비스');
@@ -3884,12 +3895,6 @@ function buildDetail(){
       case 'coupon': return Array.isArray(S.item.coupons) && S.item.coupons.length > 0;
       case 'photospot': return Array.isArray(S.item.photospots) && S.item.photospots.length > 0;
       case 'amenities': return Array.isArray(S.item.amenities) && S.item.amenities.length > 0;
-      case 'goods': return Array.isArray(S.item.goods) && S.item.goods.length > 0;
-      case 'rental': return Array.isArray(S.item.rentals) && S.item.rentals.length > 0;
-      case 'stamp': return Array.isArray(S.item.stamps) && S.item.stamps.length > 0;
-      case 'safety': 
-        return (Array.isArray(S.item.safetyCenters) && S.item.safetyCenters.length > 0) ||
-               (Array.isArray(S.item.safetyEmergencies) && S.item.safetyEmergencies.length > 0);
       default: return true;
     }
   };
@@ -3897,11 +3902,7 @@ function buildDetail(){
   [{id:'program',n:'프로그램',ic:'calendar',sc:'#2563eb',bg:'#eff6ff'},
    {id:'coupon',n:'쿠폰함',ic:'ticket',sc:'#dc2626',bg:'#fef2f2'},
    {id:'photospot',n:'포토존',ic:'camera',sc:'#7c3aed',bg:'#faf5ff'},
-   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'},
-   {id:'goods',n:'굿즈샵',ic:'bag',sc:'#d97706',bg:'#fffbeb'},
-   {id:'rental',n:'대여소',ic:'zap',sc:'#0891b2',bg:'#ecfeff'},
-   {id:'stamp',n:'스탬프투어',ic:'pin',sc:'#4f46e5',bg:'#eef2ff'},
-   {id:'safety',n:'안전센터',ic:'shield',sc:'#e11d48',bg:'#fff1f2'}
+   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'}
   ].forEach(s=>{
     const isAvailable = hasData(s.id);
     const b=btn('svc-btn','',()=>{
@@ -9239,6 +9240,7 @@ function render(){
   const pages={home:buildHome,map:buildMap,calendar:buildCalendar,chat:buildChat,my:buildMy};
   frag.appendChild((pages[S.tab]||buildHome)());
   frag.appendChild(buildNav());
+  if(S.showSearch) frag.appendChild(buildSearchPanel());
   if(S.showNotif)  frag.appendChild(buildNotifPanel());
   if(S.showDna)    frag.appendChild(buildDnaModal());
   if(S.showAllLive) frag.appendChild(buildFullListPage('지금 진행 중 축제',S.festivals,false));
@@ -9264,6 +9266,219 @@ function render(){
   if(S.mateView==='chat'&&S.chatRoomId) frag.appendChild(buildMateChat());
   if(S.mateView==='myPosts') frag.appendChild(buildMyPosts());
   root.replaceChildren(frag);
+}
+
+function buildSearchPanel(){
+  const panel=div('notif-panel');
+  
+  // backdrop
+  const backdrop=div('notif-backdrop');
+  backdrop.onclick=()=>setState({showSearch:false,searchQuery:''});
+  panel.appendChild(backdrop);
+  
+  const sheet=div('notif-sheet');
+  css(sheet,{display:'flex',flexDirection:'column'});
+  
+  // 검색 헤더
+  const head=div('');
+  css(head,{padding:'14px 16px',borderBottom:'1px solid #f1f5f9',display:'flex',alignItems:'center',gap:'10px',background:'#fff'});
+  
+  // 닫기 버튼
+  const closeBtn=btn('icon-btn','',()=>setState({showSearch:false,searchQuery:''}));
+  const closeIco=icon('back');css(closeIco,{stroke:'#0f172a',width:'22px',height:'22px'});
+  closeBtn.appendChild(closeIco);
+  css(closeBtn,{flexShrink:'0'});
+  
+  // 검색 입력 영역
+  const searchBox=div('');
+  css(searchBox,{flex:'1',display:'flex',alignItems:'center',gap:'8px',background:'#f8fafc',borderRadius:'12px',padding:'10px 14px'});
+  const searchIco=icon('search');css(searchIco,{stroke:'#94a3b8',width:'18px',height:'18px',flexShrink:'0'});
+  const searchInput=el('input','');
+  searchInput.type='text';
+  searchInput.placeholder='축제명, 지역, 태그로 검색';
+  searchInput.value=S.searchQuery;
+  css(searchInput,{flex:'1',border:'none',outline:'none',background:'transparent',fontSize:'15px',color:'#0f172a',fontFamily:'inherit'});
+  searchInput.oninput=(e)=>{
+    S.searchQuery=e.target.value;
+    // 결과 부분만 다시 렌더링
+    renderSearchResults();
+  };
+  searchInput.onkeydown=(e)=>{
+    if(e.key==='Escape'){setState({showSearch:false,searchQuery:''});}
+  };
+  ap(searchBox,searchIco,searchInput);
+  
+  // X 버튼 (검색어 지우기)
+  const clearBtn=btn('','',()=>{
+    S.searchQuery='';
+    searchInput.value='';
+    renderSearchResults();
+    searchInput.focus();
+  });
+  css(clearBtn,{flexShrink:'0',background:'#e2e8f0',color:'#475569',border:'none',padding:'0',cursor:'pointer',width:'20px',height:'20px',borderRadius:'50%',display:S.searchQuery?'flex':'none',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:'700',lineHeight:'1'});
+  clearBtn.id='search-clear-btn';
+  clearBtn.textContent='×';
+  ap(searchBox,clearBtn);
+  
+  ap(head,closeBtn,searchBox);
+  
+  // 결과 컨테이너
+  const resultsWrap=div('');
+  resultsWrap.id='search-results-wrap';
+  css(resultsWrap,{flex:'1',overflowY:'auto',background:'#fff',padding:'16px'});
+  
+  ap(sheet,head,resultsWrap);
+  panel.appendChild(sheet);
+  
+  // 입력창 자동 포커스
+  setTimeout(()=>{
+    searchInput.focus();
+    renderSearchResults();
+  },50);
+  
+  return panel;
+}
+
+// 검색 결과 렌더링 (입력할 때마다 호출됨)
+function renderSearchResults(){
+  const wrap=document.getElementById('search-results-wrap');
+  if(!wrap) return;
+  
+  const clearBtn=document.getElementById('search-clear-btn');
+  if(clearBtn) clearBtn.style.display=S.searchQuery?'flex':'none';
+  
+  wrap.innerHTML='';
+  
+  const q=S.searchQuery.trim().toLowerCase();
+  
+  // 검색어 없으면: 인기 태그 + 추천 축제
+  if(!q){
+    // 인기 검색어 (태그)
+    const popTitle=div('');
+    css(popTitle,{fontSize:'13px',fontWeight:'700',color:'#475569',marginBottom:'10px'});
+    popTitle.textContent='🔥 인기 검색어';
+    wrap.appendChild(popTitle);
+    
+    const popTagsWrap=div('');
+    css(popTagsWrap,{display:'flex',flexWrap:'wrap',gap:'8px',marginBottom:'24px'});
+    const popularTags=['꽃축제','벚꽃','장미','전통문화','음악축제','야간축제','가족축제','지역축제'];
+    popularTags.forEach(tag=>{
+      const chip=btn('','',()=>{
+        S.searchQuery=tag;
+        const input=document.querySelector('#search-results-wrap').parentElement.querySelector('input');
+        if(input) input.value=tag;
+        renderSearchResults();
+      });
+      css(chip,{
+        background:'#f1f5f9',color:'#374151',border:'none',
+        padding:'7px 14px',borderRadius:'9999px',
+        fontSize:'13px',fontWeight:'600',cursor:'pointer'
+      });
+      chip.textContent='#'+tag;
+      popTagsWrap.appendChild(chip);
+    });
+    wrap.appendChild(popTagsWrap);
+    
+    // 추천 축제 (혼잡도 순)
+    const recTitle=div('');
+    css(recTitle,{fontSize:'13px',fontWeight:'700',color:'#475569',marginBottom:'10px'});
+    recTitle.textContent='✨ 추천 축제';
+    wrap.appendChild(recTitle);
+    
+    const topFests=[...S.festivals].sort((a,b)=>(b.cong||0)-(a.cong||0)).slice(0,5);
+    topFests.forEach(f=>wrap.appendChild(buildSearchResultCard(f)));
+    return;
+  }
+  
+  // 실제 검색
+  const results=S.festivals.filter(f=>{
+    const title=(f.title||'').toLowerCase();
+    const loc=(f.loc||'').toLowerCase();
+    const region=(f.region||'').toLowerCase();
+    const tag=(f.tag||'').toLowerCase();
+    return title.includes(q) || loc.includes(q) || region.includes(q) || tag.includes(q);
+  });
+  
+  if(!results.length){
+    const empty=div('');
+    css(empty,{textAlign:'center',padding:'60px 20px',color:'#94a3b8'});
+    const emptyIco=div('');css(emptyIco,{fontSize:'48px',marginBottom:'12px'});
+    emptyIco.textContent='🔍';
+    const emptyTxt=div('');css(emptyTxt,{fontSize:'15px',fontWeight:'700',color:'#475569',marginBottom:'4px'});
+    emptyTxt.textContent='검색 결과가 없습니다';
+    const emptySub=div('');css(emptySub,{fontSize:'13px',color:'#94a3b8'});
+    emptySub.textContent=`"${S.searchQuery}"에 해당하는 축제를 찾지 못했어요`;
+    ap(empty,emptyIco,emptyTxt,emptySub);
+    wrap.appendChild(empty);
+    return;
+  }
+  
+  // 결과 카운트
+  const countTxt=div('');
+  css(countTxt,{fontSize:'13px',color:'#64748b',marginBottom:'12px'});
+  countTxt.innerHTML=`검색 결과 <strong style="color:#ef8200">${results.length}개</strong>`;
+  wrap.appendChild(countTxt);
+  
+  // 결과 카드들
+  results.forEach(f=>wrap.appendChild(buildSearchResultCard(f)));
+}
+
+// 검색 결과 카드
+function buildSearchResultCard(f){
+  const card=div('');
+  css(card,{
+    display:'flex',gap:'12px',padding:'12px',marginBottom:'8px',
+    background:'#fff',border:'1px solid #f1f5f9',borderRadius:'12px',
+    cursor:'pointer',transition:'background .15s'
+  });
+  card.onclick=()=>{
+    setState({showSearch:false,searchQuery:''});
+    setTimeout(()=>openDetail(f),100);
+  };
+  card.onmouseenter=()=>{card.style.background='#f8fafc';};
+  card.onmouseleave=()=>{card.style.background='#fff';};
+  
+  // 이미지
+  const imgWrap=div('');
+  css(imgWrap,{width:'72px',height:'72px',borderRadius:'10px',overflow:'hidden',flexShrink:'0',background:'#f1f5f9'});
+  if(f.img){
+    const img=el('img','');img.src=f.img;img.alt=f.title;
+    css(img,{width:'100%',height:'100%',objectFit:'cover'});
+    imgWrap.appendChild(img);
+  }
+  
+  // 정보
+  const info=div('');
+  css(info,{flex:'1',minWidth:'0',display:'flex',flexDirection:'column',justifyContent:'space-between'});
+  
+  const titleEl=div('');
+  css(titleEl,{fontSize:'14px',fontWeight:'700',color:'#0f172a',marginBottom:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'});
+  titleEl.textContent=f.title;
+  
+  const meta=div('');
+  css(meta,{display:'flex',alignItems:'center',gap:'6px',fontSize:'11px',color:'#94a3b8',marginBottom:'4px'});
+  const pin=el('span','');pin.textContent='📍';
+  const loc=el('span','');loc.textContent=f.loc;
+  ap(meta,pin,loc);
+  
+  const tags=div('');
+  css(tags,{display:'flex',gap:'4px',flexWrap:'wrap'});
+  if(f.tag){
+    const tagChip=el('span','');
+    css(tagChip,{fontSize:'10px',fontWeight:'600',color:'#ef8200',background:'#fff7ed',padding:'2px 7px',borderRadius:'6px'});
+    tagChip.textContent='#'+f.tag;
+    tags.appendChild(tagChip);
+  }
+  if(f.region){
+    const regChip=el('span','');
+    css(regChip,{fontSize:'10px',fontWeight:'600',color:'#64748b',background:'#f1f5f9',padding:'2px 7px',borderRadius:'6px'});
+    regChip.textContent=f.region;
+    tags.appendChild(regChip);
+  }
+  
+  ap(info,titleEl,meta,tags);
+  ap(card,imgWrap,info);
+  return card;
 }
 
 function buildNotifPanel(){
@@ -9894,6 +10109,7 @@ async function injectNearbyToFestival(){
     if(S.showAllLive)          return {showAllLive:false};
     if(S.showDna)              return {showDna:false};
     if(S.showNotif)            return {showNotif:false};
+    if(S.showSearch)           return {showSearch:false,searchQuery:''};
     return null;
   }
 
