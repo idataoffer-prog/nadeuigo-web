@@ -245,6 +245,7 @@
         <button id="vt-card" onclick="switchView('card')">🎴 카드</button>
       </div>
       <div class="spacer"></div>
+      <button class="btn btn-secondary btn-sm" onclick="openCategoryManager()">🏷️ 카테고리 관리</button>
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">📥 CSV</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()">📤 CSV 가져오기</button>
       <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="uploadCSV(this)">
@@ -346,6 +347,7 @@ async function startApp(){
     firebase.initializeApp(FIREBASE_CONFIG);
     db = firebase.firestore();
     try{ storage = firebase.storage(); }catch(e){}
+    await loadCategories();
     await loadFestivals();
     bindEvents();
   }catch(err){
@@ -523,16 +525,216 @@ function bindEvents(){
 function debounce(fn, ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
 
 // ─────────────────────────────────────────────────────────────
+// 카테고리 관리 (Firestore 연동)
+// ─────────────────────────────────────────────────────────────
+let CATEGORIES = {
+  regions: ['서울','경기','인천','강원','충북','충남','대전','세종','경북','경남','대구','부산','울산','전북','전남','광주','제주'],
+  tags: ['꽃축제','여름축제','가을축제','겨울축제','야간축제','음악축제','전통문화','먹거리','문화예술','가족축제','지역축제']
+};
+
+// Firestore에서 카테고리 로드
+async function loadCategories(){
+  try {
+    const doc = await db.collection('settings').doc('categories').get();
+    if(doc.exists){
+      const data = doc.data();
+      if(Array.isArray(data.regions) && data.regions.length > 0){
+        CATEGORIES.regions = data.regions;
+      }
+      if(Array.isArray(data.tags) && data.tags.length > 0){
+        CATEGORIES.tags = data.tags;
+      }
+      console.log('✓ 카테고리 로드 완료');
+    } else {
+      // 문서 없으면 기본값으로 생성
+      await saveCategories();
+    }
+    updateFilterDropdowns();
+  } catch(e) {
+    console.error('카테고리 로드 실패:', e);
+  }
+}
+
+// Firestore에 카테고리 저장
+async function saveCategories(){
+  try {
+    await db.collection('settings').doc('categories').set({
+      regions: CATEGORIES.regions,
+      tags: CATEGORIES.tags,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  } catch(e) {
+    console.error('카테고리 저장 실패:', e);
+    return false;
+  }
+}
+
+// 상단 필터 드롭다운 갱신
+function updateFilterDropdowns(){
+  const filterRegion = document.getElementById('filter-region');
+  if(filterRegion){
+    const current = filterRegion.value;
+    filterRegion.innerHTML = '<option value="">전체 지역</option>' + 
+      CATEGORIES.regions.map(r=>`<option value="${escapeAttr(r)}">${escapeAttr(r)}</option>`).join('');
+    filterRegion.value = current;
+  }
+  const filterTag = document.getElementById('filter-tag');
+  if(filterTag){
+    const current = filterTag.value;
+    filterTag.innerHTML = '<option value="">전체 태그</option>' + 
+      CATEGORIES.tags.map(t=>`<option value="${escapeAttr(t)}">${escapeAttr(t)}</option>`).join('');
+    filterTag.value = current;
+  }
+}
+
+// 카테고리 관리 모달 열기
+function openCategoryManager(){
+  const modal = document.createElement('div');
+  modal.id = 'cat-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+  
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;padding:24px';
+  
+  box.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid #e2e8f0;padding-bottom:12px">
+      <h2 style="margin:0;font-size:20px;font-weight:700;color:#0f172a">🏷️ 카테고리 관리</h2>
+      <button onclick="document.getElementById('cat-modal').remove()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b">✕</button>
+    </div>
+    
+    <div style="background:#fff7ed;border-left:3px solid #ef8200;padding:12px 14px;margin-bottom:20px;border-radius:6px;font-size:13px;color:#92400e">
+      💡 카테고리를 추가/삭제하면 소비자 앱(ktrip.html)에도 자동 반영됩니다.<br>
+      삭제 시, 해당 카테고리가 설정된 축제들은 영향받지 않습니다 (수동 수정 필요).
+    </div>
+    
+    <!-- 지역 -->
+    <div style="margin-bottom:24px">
+      <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 10px">📍 지역 카테고리</h3>
+      <div id="cat-regions-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="cat-region-input" placeholder="새 지역 추가 (예: 제주도)" 
+               style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none"
+               onkeydown="if(event.key==='Enter')addCategory('regions')">
+        <button onclick="addCategory('regions')" 
+                style="padding:9px 16px;background:#ef8200;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">추가</button>
+      </div>
+    </div>
+    
+    <!-- 태그 -->
+    <div style="margin-bottom:20px">
+      <h3 style="font-size:15px;font-weight:700;color:#1e293b;margin:0 0 10px">🏷️ 테마 카테고리</h3>
+      <div id="cat-tags-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:6px">
+        <input type="text" id="cat-tag-input" placeholder="새 테마 추가 (예: 해변축제)"
+               style="flex:1;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;outline:none"
+               onkeydown="if(event.key==='Enter')addCategory('tags')">
+        <button onclick="addCategory('tags')" 
+                style="padding:9px 16px;background:#ef8200;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">추가</button>
+      </div>
+    </div>
+    
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:14px;border-top:1px solid #e2e8f0">
+      <button onclick="document.getElementById('cat-modal').remove()"
+              style="padding:10px 20px;background:#f1f5f9;color:#475569;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">닫기</button>
+    </div>
+  `;
+  
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+  renderCategoryList('regions');
+  renderCategoryList('tags');
+}
+
+// 카테고리 목록 렌더링
+function renderCategoryList(type){
+  const list = document.getElementById('cat-' + type + '-list');
+  if(!list) return;
+  
+  if(CATEGORIES[type].length === 0){
+    list.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:8px">카테고리가 없습니다</div>';
+    return;
+  }
+  
+  list.innerHTML = CATEGORIES[type].map((cat, idx) => `
+    <div style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;padding:6px 6px 6px 12px;border-radius:9999px;font-size:13px;color:#1e293b">
+      <span>${escapeAttr(cat)}</span>
+      <button onclick="removeCategory('${type}', ${idx})" 
+              style="background:#cbd5e1;color:#fff;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0">✕</button>
+    </div>
+  `).join('');
+}
+
+// 카테고리 추가
+async function addCategory(type){
+  const input = document.getElementById('cat-' + type + '-input');
+  const value = input.value.trim();
+  
+  if(!value){
+    toast('카테고리 이름을 입력해주세요', 'error');
+    return;
+  }
+  
+  if(value.length > 20){
+    toast('20자 이내로 입력해주세요', 'error');
+    return;
+  }
+  
+  if(CATEGORIES[type].includes(value)){
+    toast('이미 존재하는 카테고리입니다', 'error');
+    return;
+  }
+  
+  CATEGORIES[type].push(value);
+  input.value = '';
+  renderCategoryList(type);
+  
+  const success = await saveCategories();
+  if(success){
+    toast('카테고리가 추가되었습니다', 'success');
+    updateFilterDropdowns();
+  } else {
+    // 실패하면 롤백
+    CATEGORIES[type].pop();
+    renderCategoryList(type);
+    toast('저장 실패', 'error');
+  }
+}
+
+// 카테고리 삭제
+async function removeCategory(type, idx){
+  const name = CATEGORIES[type][idx];
+  if(!confirm(`"${name}" 카테고리를 삭제하시겠습니까?\n\n축제 데이터의 카테고리 값은 그대로 유지됩니다.`)){
+    return;
+  }
+  
+  const removed = CATEGORIES[type].splice(idx, 1);
+  renderCategoryList(type);
+  
+  const success = await saveCategories();
+  if(success){
+    toast('카테고리가 삭제되었습니다', 'success');
+    updateFilterDropdowns();
+  } else {
+    // 실패하면 롤백
+    CATEGORIES[type].splice(idx, 0, removed[0]);
+    renderCategoryList(type);
+    toast('삭제 실패', 'error');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // 편집 모달
 // ─────────────────────────────────────────────────────────────
 function openEdit(docId){
   const f = docId ? (festivals.find(x=>x.docId===docId)||{}) : {};
   const isNew = !docId;
 
-  const regionOpts = ['서울','경기','인천','강원','충북','충남','대전','세종','경북','경남','대구','부산','울산','전북','전남','광주','제주']
-    .map(r=>`<option value="${r}" ${f.region===r?'selected':''}>${r}</option>`).join('');
-  const tagOpts = ['꽃축제','여름축제','가을축제','겨울축제','야간축제','음악축제','전통문화','먹거리','문화예술','가족축제','지역축제']
-    .map(t=>`<option value="${t}" ${f.tag===t?'selected':''}>${t}</option>`).join('');
+  const regionOpts = CATEGORIES.regions
+    .map(r=>`<option value="${escapeAttr(r)}" ${f.region===r?'selected':''}>${escapeAttr(r)}</option>`).join('');
+  const tagOpts = CATEGORIES.tags
+    .map(t=>`<option value="${escapeAttr(t)}" ${f.tag===t?'selected':''}>${escapeAttr(t)}</option>`).join('');
 
   const mask = document.createElement('div');
   mask.className = 'modal-mask';

@@ -1114,10 +1114,15 @@ const VESTOR={
   hourly:[{t:"09시",v:52},{t:"10시",v:70},{t:"11시",v:88},{t:"12시",v:95},{t:"13시",v:92},{t:"14시",v:85},{t:"15시",v:72},{t:"16시",v:58}],
   predict:[{day:"내일",v:77},{day:"모레",v:97},{day:"3일 후",v:72}]
 };
+// MAP_FILTERS는 지도 페이지의 광역 필터로 별도 관리
 const MAP_FILTERS=['전체','수도권','강원도','충남','충북','세종','대전','경북','전북','경남','전남','울산','부산','대구','광주','제주'];
-const REGIONS=[
+
+// 지역 카테고리 (Firestore에서 자동 갱신)
+// 형태: [{n:'서울', ic:'city', em:'🏙'}, ...]
+let REGIONS=[
   {n:'서울',ic:'city',em:'🏙'},
-  {n:'경기/인천',ic:'plane',em:'✈️'},
+  {n:'경기',ic:'plane',em:'✈️'},
+  {n:'인천',ic:'plane',em:'✈️'},
   {n:'강원',ic:'mountain',em:'🏔'},
   {n:'제주',ic:'orange',em:'🍊'},
   {n:'부산',ic:'bridge',em:'🌊'},
@@ -1126,7 +1131,9 @@ const REGIONS=[
   {n:'충청',ic:'tent',em:'🌿'},
   {n:'내 주변',ic:'pin',em:'📍',h:true}
 ];
-const THEMES=[
+
+// 테마 카테고리 (Firestore에서 자동 갱신)
+let THEMES=[
   {n:'봄꽃 명소',em:'🌸',ic:'spark',tags:['벚꽃','꽃','봄','튤립','유채'],img:'https://images.unsplash.com/photo-1490750967868-88df5691cc22?auto=format&fit=crop&w=300&q=80'},
   {n:'먹거리장터',em:'🍜',ic:'utensils',tags:['먹거리','음식','장터','시장','푸드'],img:'https://images.unsplash.com/photo-1529543544282-ea669407fca3?auto=format&fit=crop&w=300&q=80'},
   {n:'달빛 야경',em:'🌙',ic:'moon',tags:['야경','불꽃','밤','빛','야간'],img:'https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=300&q=80'},
@@ -1134,6 +1141,79 @@ const THEMES=[
   {n:'음악/공연',em:'🎵',ic:'music',tags:['음악','공연','버스킹','콘서트','페스티벌'],img:'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=300&q=80'},
   {n:'전통문화',em:'🏮',ic:'lantern',tags:['전통','탈춤','민속','문화','역사'],img:'https://images.unsplash.com/photo-1540959733332-e94e1b3f1081?auto=format&fit=crop&w=300&q=80'},
 ];
+
+// 테마 이름별 기본 이모지/아이콘/이미지 매핑 (관리자가 새 테마 추가했을 때 자동 매핑)
+const THEME_META = {
+  '꽃축제': {em:'🌸',ic:'spark',tags:['벚꽃','꽃','봄'],img:'https://images.unsplash.com/photo-1490750967868-88df5691cc22?auto=format&fit=crop&w=300&q=80'},
+  '여름축제': {em:'☀️',ic:'sun',tags:['여름','바다','해변'],img:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80'},
+  '가을축제': {em:'🍁',ic:'leaf',tags:['가을','단풍'],img:'https://images.unsplash.com/photo-1507783548227-544c3b8fc065?auto=format&fit=crop&w=300&q=80'},
+  '겨울축제': {em:'❄️',ic:'snow',tags:['겨울','눈','얼음'],img:'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?auto=format&fit=crop&w=300&q=80'},
+  '야간축제': {em:'🌙',ic:'moon',tags:['야경','불꽃','밤'],img:'https://images.unsplash.com/photo-1538485399081-7191377e8241?auto=format&fit=crop&w=300&q=80'},
+  '음악축제': {em:'🎵',ic:'music',tags:['음악','공연'],img:'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=300&q=80'},
+  '전통문화': {em:'🏮',ic:'lantern',tags:['전통','민속'],img:'https://images.unsplash.com/photo-1540959733332-e94e1b3f1081?auto=format&fit=crop&w=300&q=80'},
+  '먹거리': {em:'🍜',ic:'utensils',tags:['먹거리','음식'],img:'https://images.unsplash.com/photo-1529543544282-ea669407fca3?auto=format&fit=crop&w=300&q=80'},
+  '문화예술': {em:'🎭',ic:'palette',tags:['예술','문화'],img:'https://images.unsplash.com/photo-1577083552431-6e5fd01988ec?auto=format&fit=crop&w=300&q=80'},
+  '가족축제': {em:'👨‍👩‍👧',ic:'heart',tags:['가족','어린이'],img:'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=300&q=80'},
+  '지역축제': {em:'🏘',ic:'home',tags:['지역','마을'],img:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=300&q=80'},
+};
+
+// 지역 이름별 기본 메타 (관리자가 새 지역 추가했을 때 자동 매핑)
+const REGION_META = {
+  '서울': {ic:'city',em:'🏙'},
+  '경기': {ic:'plane',em:'✈️'},
+  '인천': {ic:'plane',em:'✈️'},
+  '강원': {ic:'mountain',em:'🏔'},
+  '강원도': {ic:'mountain',em:'🏔'},
+  '제주': {ic:'orange',em:'🍊'},
+  '제주도': {ic:'orange',em:'🍊'},
+  '부산': {ic:'bridge',em:'🌊'},
+  '대구': {ic:'city',em:'🏙'},
+  '광주': {ic:'city',em:'🏙'},
+  '대전': {ic:'city',em:'🏙'},
+  '울산': {ic:'city',em:'🏙'},
+  '세종': {ic:'city',em:'🏙'},
+  '경북': {ic:'lantern',em:'🏮'},
+  '경남': {ic:'lantern',em:'🏮'},
+  '전북': {ic:'pot',em:'🥘'},
+  '전남': {ic:'pot',em:'🥘'},
+  '충북': {ic:'tent',em:'🌿'},
+  '충남': {ic:'tent',em:'🌿'},
+};
+
+// Firestore에서 카테고리 가져와서 REGIONS/THEMES 갱신
+async function loadCategoriesFromFirestore(){
+  try {
+    if(!db) return;
+    const doc = await db.collection('settings').doc('categories').get();
+    if(!doc.exists) return;
+    const data = doc.data();
+    
+    // 지역 갱신
+    if(Array.isArray(data.regions) && data.regions.length > 0){
+      REGIONS = data.regions.map(name => {
+        const meta = REGION_META[name] || {ic:'city',em:'📍'};
+        return {n:name, ic:meta.ic, em:meta.em};
+      });
+      // 마지막에 '내 주변' 추가
+      REGIONS.push({n:'내 주변',ic:'pin',em:'📍',h:true});
+    }
+    
+    // 테마 갱신
+    if(Array.isArray(data.tags) && data.tags.length > 0){
+      THEMES = data.tags.map(name => {
+        const meta = THEME_META[name] || {em:'🎉',ic:'spark',tags:[name],img:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=300&q=80'};
+        return {n:name, em:meta.em, ic:meta.ic, tags:meta.tags, img:meta.img};
+      });
+    }
+    
+    console.log('[나들이go] 카테고리 갱신 완료', {regions: REGIONS.length, themes: THEMES.length});
+    
+    // 현재 홈 화면이면 다시 그리기
+    if(typeof render === 'function') render();
+  } catch(e) {
+    console.error('[나들이go] 카테고리 로드 실패:', e);
+  }
+}
 const POSTS=[];  // 실제 사용자가 작성한 모집글이 들어옴
 
 // ─── DNA Quiz Data ────────────────────────────────────────────────────────────
@@ -10072,7 +10152,34 @@ async function injectNearbyToFestival(){
 (async function startApp(){
   const fbOk = initFirebase();
   if(fbOk){
+    // 축제 데이터 로드
     await loadFestivalsFromFirestore();
+    // 카테고리 로드
+    await loadCategoriesFromFirestore();
+    // 카테고리 실시간 구독 (관리자가 수정하면 즉시 반영)
+    try {
+      db.collection('settings').doc('categories').onSnapshot(doc => {
+        if(!doc.exists) return;
+        const data = doc.data();
+        if(Array.isArray(data.regions) && data.regions.length > 0){
+          REGIONS = data.regions.map(name => {
+            const meta = REGION_META[name] || {ic:'city',em:'📍'};
+            return {n:name, ic:meta.ic, em:meta.em};
+          });
+          REGIONS.push({n:'내 주변',ic:'pin',em:'📍',h:true});
+        }
+        if(Array.isArray(data.tags) && data.tags.length > 0){
+          THEMES = data.tags.map(name => {
+            const meta = THEME_META[name] || {em:'🎉',ic:'spark',tags:[name],img:'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?auto=format&fit=crop&w=300&q=80'};
+            return {n:name, em:meta.em, ic:meta.ic, tags:meta.tags, img:meta.img};
+          });
+        }
+        console.log('[나들이go] 카테고리 실시간 갱신');
+        render();
+      });
+    } catch(e) {
+      console.warn('[나들이go] 카테고리 구독 실패:', e);
+    }
   }else{
     console.log('[나들이go] Firebase 없이 시작 (하드코딩 데이터 사용)');
   }
