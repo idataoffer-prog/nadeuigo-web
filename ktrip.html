@@ -4003,7 +4003,12 @@ function buildDetail(){
       ap(card,rh,rt);revSec.appendChild(card);
     });
   }
-  ap(body,hero,dbody,ig,sl1,sg,sl2,nl,revSec);
+  // 나들이go 공식 축제만 서비스 섹션 표시
+  if(f.idata === true){
+    ap(body,hero,dbody,ig,sl1,sg,sl2,nl,revSec);
+  } else {
+    ap(body,hero,dbody,ig,sl2,nl,revSec);
+  }
 
   // ── 동행 모집 섹션
   const mateSecLbl=div('sec-lbl','이 축제 동행 구하기');css(mateSecLbl,{marginTop:'20px',marginBottom:'10px'});
@@ -4067,7 +4072,12 @@ function buildDetail(){
     mateWrap.appendChild(empty);
   }
 
-  ap(body,hero,dbody,ig,sl1,sg,sl2,nl,mateSecLbl,mateWrap,revSec);
+  // 나들이go 공식 축제만 서비스 섹션 표시
+  if(f.idata === true){
+    ap(body,hero,dbody,ig,sl1,sg,sl2,nl,mateSecLbl,mateWrap,revSec);
+  } else {
+    ap(body,hero,dbody,ig,sl2,nl,mateSecLbl,mateWrap,revSec);
+  }
 
   // CTA
   const cta=div('cta-bar');
