@@ -4016,18 +4016,25 @@ function buildDetail(){
   const nl=div('nearby-list');
 
   // 카카오맵 좌표 기반 검색 URL 생성
-  // - 좌표가 있으면 그 위치 주변 검색
-  // - 좌표가 없으면 축제명/지역으로 검색
+  // 카카오맵 검색의 정확한 형식: q=검색어&p=좌표&r=반경
   const buildKakaoUrl = (keyword) => {
-    if(f.lat && f.lng){
-      // 좌표 기반 검색 (정확한 위치 주변)
-      return `https://map.kakao.com/?q=${encodeURIComponent(keyword)}&urlX=${f.lng}&urlY=${f.lat}&urlLevel=3`;
+    // 좌표 유효성 검사
+    const hasValidCoords = f.lat && f.lng && 
+                          !isNaN(f.lat) && !isNaN(f.lng) &&
+                          f.lat > 33 && f.lat < 43 &&  // 한국 위도 범위
+                          f.lng > 124 && f.lng < 132;  // 한국 경도 범위
+    
+    if(hasValidCoords){
+      // 카카오맵 좌표 기반 검색
+      // m_search.daum.net 형식이 가장 정확하게 작동함
+      return `https://m.map.kakao.com/actions/searchView?q=${encodeURIComponent(keyword)}&wxEnc=&wyEnc=&lvl=4&clat=${f.lat}&clng=${f.lng}`;
     } else if(f.loc){
-      // 지역명 + 키워드 검색
-      return `https://map.kakao.com/?q=${encodeURIComponent(f.loc + ' ' + keyword)}`;
+      // 좌표 없으면 지역명 + 키워드 검색
+      const locKeyword = `${f.loc} ${keyword}`;
+      return `https://map.kakao.com/?q=${encodeURIComponent(locKeyword)}`;
     } else {
-      // 마지막 폴백: 축제명 + 키워드
-      return `https://map.kakao.com/?q=${encodeURIComponent(f.title + ' ' + keyword)}`;
+      // 마지막 폴백
+      return `https://map.kakao.com/?q=${encodeURIComponent(keyword)}`;
     }
   };
 
