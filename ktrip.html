@@ -4011,34 +4011,56 @@ function buildDetail(){
     ap(b,siw,sn);sg.appendChild(b);
   });
 
-  // nearby — 축제 위치 기반 카카오맵 검색 링크
+  // nearby — 축제 위치 기반 카카오맵 검색 (좌표 기반)
   const sl2=div('sec-lbl','주변 정보');css(sl2,{marginTop:'16px'});
   const nl=div('nearby-list');
 
-  const festLat=f.lat||37.5283;
-  const festLng=f.lng||126.9335;
-  const festName=encodeURIComponent(f.loc||f.title);
+  // 카카오맵 좌표 기반 검색 URL 생성
+  // - 좌표가 있으면 그 위치 주변 검색
+  // - 좌표가 없으면 축제명/지역으로 검색
+  const buildKakaoUrl = (keyword) => {
+    if(f.lat && f.lng){
+      // 좌표 기반 검색 (정확한 위치 주변)
+      return `https://map.kakao.com/?q=${encodeURIComponent(keyword)}&urlX=${f.lng}&urlY=${f.lat}&urlLevel=3`;
+    } else if(f.loc){
+      // 지역명 + 키워드 검색
+      return `https://map.kakao.com/?q=${encodeURIComponent(f.loc + ' ' + keyword)}`;
+    } else {
+      // 마지막 폴백: 축제명 + 키워드
+      return `https://map.kakao.com/?q=${encodeURIComponent(f.title + ' ' + keyword)}`;
+    }
+  };
 
   [
     {
       l:'주변 맛집',ic:'utensils',sc:'#16a34a',
-      url:`https://map.kakao.com/link/search/${encodeURIComponent((f.loc||''))} 맛집`,
-      sub:'카카오맵에서 검색',
+      url:buildKakaoUrl('맛집'),
+      sub:'카카오맵에서 보기',
     },
     {
-      l:'숙박 정보',ic:'bed',sc:'#2563eb',
-      url:`https://map.kakao.com/link/search/${encodeURIComponent((f.loc||''))} 숙박`,
-      sub:'카카오맵에서 검색',
+      l:'카페',ic:'bag',sc:'#d97706',
+      url:buildKakaoUrl('카페'),
+      sub:'카카오맵에서 보기',
     },
     {
-      l:'근처 약국',ic:'heart2',sc:'#dc2626',
-      url:`https://map.kakao.com/link/search/${encodeURIComponent((f.loc||''))} 약국`,
-      sub:'카카오맵에서 검색',
+      l:'숙박',ic:'bed',sc:'#2563eb',
+      url:buildKakaoUrl('숙박'),
+      sub:'카카오맵에서 보기',
     },
     {
-      l:'편의점',ic:'bag',sc:'#d97706',
-      url:`https://map.kakao.com/link/search/${encodeURIComponent((f.loc||''))} 편의점`,
-      sub:'카카오맵에서 검색',
+      l:'근처 주차장',ic:'info',sc:'#7c3aed',
+      url:buildKakaoUrl('주차장'),
+      sub:'카카오맵에서 보기',
+    },
+    {
+      l:'편의점',ic:'bag',sc:'#475569',
+      url:buildKakaoUrl('편의점'),
+      sub:'카카오맵에서 보기',
+    },
+    {
+      l:'약국',ic:'heart2',sc:'#dc2626',
+      url:buildKakaoUrl('약국'),
+      sub:'카카오맵에서 보기',
     },
   ].forEach(r=>{
     const row=div('nearby-row');
