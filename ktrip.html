@@ -4015,39 +4015,39 @@ function buildDetail(){
   const sl2=div('sec-lbl','주변 정보');css(sl2,{marginTop:'16px'});
   const nl=div('nearby-list');
 
-  // 카카오맵 좌표 기반 검색 URL 생성
-  // 카카오맵 검색의 정확한 형식: q=검색어&p=좌표&r=반경
-  const buildKakaoUrl = (keyword) => {
-    // 좌표 유효성 검사
-    const hasValidCoords = f.lat && f.lng && 
-                          !isNaN(f.lat) && !isNaN(f.lng) &&
-                          f.lat > 33 && f.lat < 43 &&  // 한국 위도 범위
-                          f.lng > 124 && f.lng < 132;  // 한국 경도 범위
+  // 네이버 지도 좌표 기반 검색 URL 생성
+  // 네이버는 좌표 기반 검색이 가장 정확함
+  const buildMapUrl = (keyword) => {
+    // 좌표 유효성 검사 (한국 좌표 범위)
+    const lat = parseFloat(f.lat);
+    const lng = parseFloat(f.lng);
+    const hasValidCoords = lat && lng && 
+                          !isNaN(lat) && !isNaN(lng) &&
+                          lat > 33 && lat < 43 &&
+                          lng > 124 && lng < 132;
     
     if(hasValidCoords){
-      // 카카오맵 좌표 기반 검색
-      // m_search.daum.net 형식이 가장 정확하게 작동함
-      return `https://m.map.kakao.com/actions/searchView?q=${encodeURIComponent(keyword)}&wxEnc=&wyEnc=&lvl=4&clat=${f.lat}&clng=${f.lng}`;
+      // 네이버 지도: 검색어 + 좌표 (가장 정확)
+      // 형식: https://map.naver.com/p/search/{검색어}?c={경도},{위도},15,0,0,0,dh
+      return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}?c=${lng},${lat},15,0,0,0,dh`;
     } else if(f.loc){
       // 좌표 없으면 지역명 + 키워드 검색
-      const locKeyword = `${f.loc} ${keyword}`;
-      return `https://map.kakao.com/?q=${encodeURIComponent(locKeyword)}`;
+      return `https://map.naver.com/p/search/${encodeURIComponent(f.loc + ' ' + keyword)}`;
     } else {
-      // 마지막 폴백
-      return `https://map.kakao.com/?q=${encodeURIComponent(keyword)}`;
+      return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}`;
     }
   };
 
   [
     {
       l:'주변 맛집',ic:'utensils',sc:'#16a34a',
-      url:buildKakaoUrl('맛집'),
-      sub:'카카오맵에서 보기',
+      url:buildMapUrl('맛집'),
+      sub:'네이버 지도에서 보기',
     },
     {
       l:'숙박',ic:'bed',sc:'#2563eb',
-      url:buildKakaoUrl('숙박'),
-      sub:'카카오맵에서 보기',
+      url:buildMapUrl('숙박'),
+      sub:'네이버 지도에서 보기',
     },
   ].forEach(r=>{
     const row=div('nearby-row');
