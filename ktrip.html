@@ -703,7 +703,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260716B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4508,14 +4508,58 @@ function buildSubInfo(){
     function renderProgContent(){
       contentArea.innerHTML = '';
       let list = [];
+      let isDateTab = false;
       if(S._progTab && S._progTab.startsWith('cat:')){
         const cat = S._progTab.slice(4);
         list = otherPrograms.filter(p => (p.category || '기타') === cat);
       } else if(S._progTab && S._progTab.startsWith('date:')){
         const dt = S._progTab.slice(5);
         list = dailyPrograms.filter(p => p.date === dt);
+        isDateTab = true;
       } else {
         list = programs;
+      }
+
+      // ── 2단계: 날짜 탭이면 카테고리 서브탭 표시
+      if(isDateTab && list.length){
+        const cats = [...new Set(list.map(p => p.category || '기타'))];
+        cats.sort((a, b) => {
+          const ia = catOrder.indexOf(a); const ib = catOrder.indexOf(b);
+          return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
+        // 현재 선택된 카테고리가 이 날짜에 없으면 첫 카테고리로
+        if(!S._progCat || (S._progCat !== '전체' && !cats.includes(S._progCat))) S._progCat = '전체';
+
+        if(cats.length > 1){
+          const catRow = div('');
+          css(catRow, {display:'flex', gap:'6px', overflowX:'auto', marginBottom:'14px',
+            scrollbarWidth:'none', msOverflowStyle:'none'});
+          catRow.style.cssText += ';-webkit-overflow-scrolling:touch';
+          const allCats = ['전체'].concat(cats);
+          allCats.forEach(c => {
+            const act = S._progCat === c;
+            const meta2 = c === '전체' ? null : (catMeta[c] || catMeta['기타']);
+            const cChip = div('');
+            css(cChip, {flexShrink:'0', padding:'6px 12px', borderRadius:'16px', fontSize:'12px', fontWeight:'700',
+              cursor:'pointer', border: act ? '1.5px solid #7c3aed' : '1.5px solid #e2e8f0',
+              background: act ? '#f5f3ff' : '#fff', color: act ? '#7c3aed' : '#64748b',
+              display:'flex', alignItems:'center', gap:'4px'});
+            const cnt = c === '전체' ? list.length : list.filter(p => (p.category || '기타') === c).length;
+            setText(cChip, (meta2 ? meta2.emoji + ' ' : '') + c + ' ' + cnt);
+            cChip.onclick = () => {
+              if(S._progCat === c) return;
+              S._progCat = c;
+              renderProgContent();
+            };
+            catRow.appendChild(cChip);
+          });
+          contentArea.appendChild(catRow);
+        }
+
+        // 선택된 카테고리로 필터
+        if(S._progCat && S._progCat !== '전체'){
+          list = list.filter(p => (p.category || '기타') === S._progCat);
+        }
       }
 
       if(!list.length){
@@ -4589,6 +4633,7 @@ function buildSubInfo(){
         chip.onclick = () => {
           if(S._progTab === tab.key) return;
           S._progTab = tab.key;
+          S._progCat = '전체'; // 날짜 바꾸면 카테고리 선택 초기화
           // 탭 색상만 갱신
           chipRefs.forEach(c => {
             const act = c._tabKey === tab.key;
