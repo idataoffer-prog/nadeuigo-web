@@ -1330,9 +1330,6 @@ async function analyzeProgramImages(){
       toast('API 키가 저장되었습니다', 'success');
     }
     
-    // 사용 가능한 모델 (우선순위 순)
-    const modelName = 'gemini-2.5-flash';
-    
     const aiPrompt = `당신은 축제 프로그램 정보 추출 전문가입니다. 이미지에서 프로그램 정보를 정확하게 추출해주세요.
 
 **추출 규칙:**
@@ -1365,20 +1362,7 @@ async function analyzeProgramImages(){
 
 응답은 반드시 유효한 JSON만 반환하세요. 설명, 마크다운 코드 블록, 그 외 텍스트 없이.`;
     
-    // 요청 body 구성
-    const parts = [{ text: aiPrompt }];
-    _progAIImages.forEach(img => {
-      parts.push({
-        inline_data: {
-          mime_type: img.mimeType,
-          data: img.base64
-        }
-      });
-    });
-    
-    console.log('📤 API 요청 전송 중...');
-    
-    // 여러 모델 순서대로 시도 (하나 실패하면 다음 모델)
+    // 사용 가능한 모델 (우선순위 순)
     const modelCandidates = [
       'gemini-2.5-flash',
       'gemini-2.0-flash',
@@ -1386,79 +1370,117 @@ async function analyzeProgramImages(){
       'gemini-flash-latest'
     ];
     
-    let response = null;
-    let lastError = '';
-    let usedModel = '';
+    // ⭐ 이미지를 한 장씩 순차 처리해서 결과 합치기
+    let allPrograms = [];
+    const totalImages = _progAIImages.length;
     
-    for(const model of modelCandidates){
-      console.log(`🔄 모델 시도: ${model}`);
-      try {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: parts }],
-              generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 8192
-              }
-            })
+    for(let imgIdx = 0; imgIdx < totalImages; imgIdx++){
+      const img = _progAIImages[imgIdx];
+      console.log(`🖼️ 이미지 ${imgIdx + 1}/${totalImages} 분석 중...`);
+      
+      // 로딩 메시지 업데이트
+      const loadingText = loading.querySelector('div:nth-child(2)');
+      if(loadingText){
+        loadingText.textContent = `이미지 ${imgIdx + 1}/${totalImages} 분석 중...`;
+      }
+      
+      // 이 이미지에 대한 요청 구성 (한 장만!)
+      const parts = [
+        { text: aiPrompt },
+        {
+          inline_data: {
+            mime_type: img.mimeType,
+            data: img.base64
           }
-        );
-        
-        if(response.ok){
-          usedModel = model;
-          console.log(`✅ 모델 성공: ${model}`);
-          break;
-        } else {
-          const errText = await response.text();
-          lastError = `${model}: ${response.status}`;
-          console.log(`⚠️ ${model} 실패 (${response.status}), 다음 모델 시도...`);
+        }
+      ];
+      
+      // 모델 순서대로 시도
+      let response = null;
+      let lastError = '';
+      
+      for(const model of modelCandidates){
+        try {
+          response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: parts }],
+                generationConfig: {
+                  temperature: 0.1,
+                  maxOutputTokens: 8192
+                }
+              })
+            }
+          );
+          
+          if(response.ok){
+            console.log(`✅ 이미지 ${imgIdx + 1}: ${model} 성공`);
+            break;
+          } else {
+            const errText = await response.text();
+            lastError = `${model}: ${response.status}`;
+            console.log(`⚠️ ${model} 실패 (${response.status})`);
+            response = null;
+          }
+        } catch(e) {
+          lastError = `${model}: ${e.message}`;
           response = null;
         }
-      } catch(e) {
-        lastError = `${model}: ${e.message}`;
-        console.log(`⚠️ ${model} 오류:`, e.message);
-        response = null;
+      }
+      
+      if(!response || !response.ok){
+        // 이 이미지 실패해도 계속 진행
+        console.error(`❌ 이미지 ${imgIdx + 1} 분석 실패: ${lastError}`);
+        continue;
+      }
+      
+      // 응답 처리
+      try {
+        const data = await response.json();
+        const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        
+        if(!textResponse){
+          console.warn(`⚠️ 이미지 ${imgIdx + 1}: 빈 응답`);
+          continue;
+        }
+        
+        // JSON 파싱
+        let jsonStr = textResponse.trim();
+        jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+        
+        const parsed = JSON.parse(jsonStr);
+        const programs = parsed.programs || [];
+        
+        console.log(`📋 이미지 ${imgIdx + 1}: ${programs.length}개 프로그램 발견`);
+        allPrograms = allPrograms.concat(programs);
+        
+      } catch(parseErr){
+        console.error(`❌ 이미지 ${imgIdx + 1} 파싱 실패:`, parseErr);
+        continue;
       }
     }
     
-    console.log('📥 최종 응답:', response ? `성공 (${usedModel})` : '모든 모델 실패');
+    console.log(`✅ 전체 완료: 총 ${allPrograms.length}개 프로그램`);
     
-    if(!response || !response.ok){
-      throw new Error(`사용 가능한 AI 모델을 찾을 수 없습니다.\n\n마지막 오류: ${lastError}\n\nAPI 키가 올바른지 확인해주세요.`);
+    if(!allPrograms.length){
+      throw new Error('프로그램을 찾을 수 없습니다.\n\n이미지가 선명한지 확인하거나, 한 장씩 나눠서 시도해보세요.');
     }
     
-    const data = await response.json();
-    console.log('📦 응답 데이터:', data);
+    // 중복 제거 (같은 시간 + 같은 제목)
+    const seen = new Set();
+    const uniquePrograms = allPrograms.filter(p => {
+      const key = `${p.date}|${p.time}|${p.title}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     
-    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    console.log('📄 텍스트 응답 (처음 500자):', textResponse.substring(0, 500));
+    console.log(`🔍 중복 제거 후: ${uniquePrograms.length}개`);
     
-    if(!textResponse){
-      throw new Error('AI 응답이 비어있습니다. 다시 시도해주세요.');
-    }
-    
-    // JSON 파싱 (마크다운 코드 블록 제거)
-    let jsonStr = textResponse.trim();
-    jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
-    
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch(parseErr){
-      console.error('❌ JSON 파싱 실패:', jsonStr);
-      throw new Error('AI 응답을 이해할 수 없습니다. 이미지가 명확한지 확인해주세요.');
-    }
-    
-    const programs = parsed.programs || [];
-    console.log('✅ 프로그램 개수:', programs.length);
-    
-    if(!programs.length){
-      throw new Error('프로그램을 찾을 수 없습니다');
-    }
+    const programs = uniquePrograms;
     
     // 결과 표시
     loading.style.display = 'none';
@@ -1498,7 +1520,7 @@ async function analyzeProgramImages(){
     
     result.innerHTML = `
       <div style="background:#f0fdf4;border-left:3px solid #22c55e;padding:12px 14px;margin-bottom:16px;border-radius:6px;font-size:13px;color:#166534">
-        ✅ <strong>${programs.length}개의 프로그램</strong>이 발견되었습니다! 확인 후 저장하세요.
+        ✅ <strong>${programs.length}개의 프로그램</strong>이 발견되었습니다! (${totalImages}장 이미지에서) 확인 후 저장하세요.
       </div>
       <div style="max-height:400px;overflow-y:auto;margin-bottom:16px">${groupHtml}</div>
       <div style="display:flex;gap:8px">
