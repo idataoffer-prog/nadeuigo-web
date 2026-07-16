@@ -284,6 +284,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <!-- Plus Code (Open Location Code) 공식 라이브러리 -->
 <script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
 
@@ -828,11 +829,14 @@ function openEdit(docId){
         <div class="form-section">
           <div class="section-title">
             <span>📋 프로그램 (공연/행사 일정)</span>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="add-btn" onclick="downloadProgramTemplate()" style="background:#f0fdf4;border-color:#22c55e;color:#166534">📥 엑셀 양식</button>
+              <button type="button" class="add-btn" onclick="document.getElementById('prog-excel-file').click()" style="background:linear-gradient(135deg,#22c55e,#16a34a);border-color:#16a34a">📊 엑셀 업로드</button>
               <button type="button" class="add-btn" onclick="openProgramAI()" style="background:linear-gradient(135deg,#a855f7,#8b5cf6);border-color:#8b5cf6">🤖 이미지로 자동 입력</button>
               <button type="button" class="add-btn" onclick="addProgItem()">+ 항목 추가</button>
             </div>
           </div>
+          <input type="file" id="prog-excel-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleProgramExcel(this.files[0])">
           <div id="prog-list" class="prog-list"></div>
         </div>
 
@@ -1330,37 +1334,22 @@ async function analyzeProgramImages(){
       toast('API 키가 저장되었습니다', 'success');
     }
     
-    const aiPrompt = `당신은 축제 프로그램 정보 추출 전문가입니다. 이미지에서 프로그램 정보를 정확하게 추출해주세요.
+    const aiPrompt = `당신은 축제 프로그램 정보 추출 전문가입니다. 이미지에서 프로그램 정보를 추출해 JSON으로만 응답하세요.
 
-**추출 규칙:**
-1. 각 프로그램을 개별 항목으로 분리
-2. 카테고리 자동 분류: "일자별"(특정 날짜 행사), "상설행사"(기간 내내), "먹거리"(먹거리 부스/판매), "공연", "체험" 중 선택
-3. 날짜는 YYYY-MM-DD 형식 (연도가 없으면 ${year} 사용)
-4. 시간은 HH:MM 24시간 형식 (예: "13:00")
-5. 상설 프로그램은 여러 날짜 정보를 그대로 표시하고 date는 null
-6. 가격은 숫자만 (예: "10000", 무료면 "무료")
-7. 대상: "성인", "어린이", "가족", "전체" 중 선택
-8. 예약 유형: "현장접수", "사전예약", "자유참여" 중 선택 (해당사항 없으면 빈 문자열)
+**중요: 반드시 아래 JSON 형식으로만 응답. 다른 텍스트 절대 금지.**
 
-**JSON 응답 형식 (마크다운 코드 블록 없이 순수 JSON만):**
-{
-  "programs": [
-    {
-      "category": "일자별",
-      "date": "${year}-09-19",
-      "time": "13:00",
-      "endTime": "",
-      "title": "마당극 '무창포, 폭식 속있수다'",
-      "loc": "잔디광장",
-      "price": "",
-      "audience": "전체",
-      "reservation": "",
-      "note": ""
-    }
-  ]
-}
+추출 규칙:
+- 카테고리: "일자별"(특정날짜), "상설행사"(기간내내), "먹거리", "공연", "체험" 중 하나
+- 날짜: YYYY-MM-DD (연도없으면 ${year})
+- 시간: HH:MM (24시간, 예 "13:00")
+- 가격: 숫자만 또는 "무료" 또는 ""
+- 대상: "성인"/"어린이"/"가족"/"전체"
+- 예약: "현장접수"/"사전예약"/"자유참여"/""
 
-응답은 반드시 유효한 JSON만 반환하세요. 설명, 마크다운 코드 블록, 그 외 텍스트 없이.`;
+출력 형식 (이것만 출력):
+{"programs":[{"category":"일자별","date":"${year}-09-19","time":"13:00","endTime":"","title":"행사명","loc":"장소","price":"","audience":"전체","reservation":"","note":""}]}
+
+프로그램이 많으면 모두 포함하세요. JSON만 출력하세요.`;
     
     // 사용 가능한 모델 (우선순위 순)
     const modelCandidates = [
@@ -1447,9 +1436,16 @@ async function analyzeProgramImages(){
           continue;
         }
         
-        // JSON 파싱
+        // JSON 파싱 (더 똑똑하게)
         let jsonStr = textResponse.trim();
+        // 마크다운 코드 블록 제거
         jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+        
+        // 텍스트 중간에서 JSON 객체 추출 ({ 로 시작해서 } 로 끝나는 부분)
+        const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+        if(jsonMatch){
+          jsonStr = jsonMatch[0];
+        }
         
         const parsed = JSON.parse(jsonStr);
         const programs = parsed.programs || [];
@@ -1553,6 +1549,209 @@ function resetGeminiKey(){
     toast('API 키가 삭제되었습니다', 'success');
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 📊 엑셀로 프로그램 입력
+// ═══════════════════════════════════════════════════════════════
+
+// 엑셀 양식 다운로드
+function downloadProgramTemplate(){
+  if(typeof XLSX === 'undefined'){
+    alert('엑셀 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  // 샘플 데이터
+  const sampleData = [
+    ['카테고리', '날짜', '시작시간', '종료시간', '행사명', '장소', '가격', '대상', '예약'],
+    ['일자별', '2026-09-19', '13:00', '', "마당극 '무창포, 폭식 속있수다'", '잔디광장', '', '전체', ''],
+    ['일자별', '2026-09-19', '13:40', '', '맨손물고기잡기체험(대하/전어)', '잔디광장 옆', '10000', '성인', '현장접수'],
+    ['일자별', '2026-09-19', '15:00', '', '개막식', '해변광장', '', '전체', ''],
+    ['상설행사', '', '10:00', '18:00', '조개껍질 공예', '잔디광장', '무료', '전체', '자유참여'],
+    ['먹거리', '', '10:00', '18:00', '신비한 대하구이 (5마리)', '씨푸드파티존', '8000', '전체', ''],
+  ];
+  
+  const ws = XLSX.utils.aoa_to_sheet(sampleData);
+  
+  // 열 너비 설정
+  ws['!cols'] = [
+    {wch: 10}, {wch: 12}, {wch: 10}, {wch: 10}, 
+    {wch: 30}, {wch: 15}, {wch: 8}, {wch: 8}, {wch: 10}
+  ];
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '프로그램');
+  
+  // 안내 시트 추가
+  const guideData = [
+    ['📋 프로그램 입력 안내'],
+    [''],
+    ['✅ 카테고리 (필수)'],
+    ['  - 일자별: 특정 날짜의 행사'],
+    ['  - 상설행사: 축제 기간 내내 진행'],
+    ['  - 먹거리: 먹거리 부스/판매'],
+    ['  - 공연: 공연 프로그램'],
+    ['  - 체험: 체험 프로그램'],
+    [''],
+    ['✅ 날짜'],
+    ['  - 형식: 2026-09-19 (YYYY-MM-DD)'],
+    ['  - 일자별만 입력, 상설은 비워두기'],
+    [''],
+    ['✅ 시작시간 / 종료시간'],
+    ['  - 형식: 13:00 (24시간)'],
+    ['  - 종료시간은 선택'],
+    [''],
+    ['✅ 가격'],
+    ['  - 숫자만: 10000'],
+    ['  - 무료면: 무료'],
+    ['  - 없으면: 비워두기'],
+    [''],
+    ['✅ 대상'],
+    ['  - 전체 / 성인 / 어린이 / 가족'],
+    [''],
+    ['✅ 예약'],
+    ['  - 현장접수 / 사전예약 / 자유참여'],
+    ['  - 없으면: 비워두기'],
+  ];
+  const guideWs = XLSX.utils.aoa_to_sheet(guideData);
+  guideWs['!cols'] = [{wch: 50}];
+  XLSX.utils.book_append_sheet(wb, guideWs, '작성안내');
+  
+  XLSX.writeFile(wb, '나들이go_프로그램_양식.xlsx');
+  toast('엑셀 양식이 다운로드되었습니다', 'success');
+}
+
+// 엑셀 파일 처리
+async function handleProgramExcel(file){
+  if(!file) return;
+  
+  if(typeof XLSX === 'undefined'){
+    alert('엑셀 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  try {
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    
+    // 첫 번째 시트 읽기 (프로그램 시트)
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ''});
+    
+    if(rows.length < 2){
+      alert('데이터가 없습니다. 양식을 다운로드해서 작성해주세요.');
+      return;
+    }
+    
+    // 헤더 찾기 (첫 행)
+    const header = rows[0].map(h => String(h).trim());
+    console.log('엑셀 헤더:', header);
+    
+    // 열 인덱스 매핑
+    const colMap = {
+      category: header.findIndex(h => h.includes('카테고리') || h.includes('구분')),
+      date: header.findIndex(h => h.includes('날짜') || h.includes('일자')),
+      time: header.findIndex(h => h.includes('시작') || (h.includes('시간') && !h.includes('종료'))),
+      endTime: header.findIndex(h => h.includes('종료')),
+      title: header.findIndex(h => h.includes('행사') || h.includes('제목') || h.includes('프로그램') || h.includes('내용')),
+      loc: header.findIndex(h => h.includes('장소') || h.includes('위치')),
+      price: header.findIndex(h => h.includes('가격') || h.includes('요금') || h.includes('비용')),
+      audience: header.findIndex(h => h.includes('대상')),
+      reservation: header.findIndex(h => h.includes('예약') || h.includes('접수'))
+    };
+    
+    console.log('열 매핑:', colMap);
+    
+    // 제목 열은 필수
+    if(colMap.title === -1){
+      alert('행사명 열을 찾을 수 없습니다.\n양식의 헤더를 확인해주세요.');
+      return;
+    }
+    
+    // 데이터 파싱 (2행부터)
+    const newPrograms = [];
+    for(let i = 1; i < rows.length; i++){
+      const row = rows[i];
+      const getVal = (idx) => idx >= 0 && row[idx] != null ? String(row[idx]).trim() : '';
+      
+      const title = getVal(colMap.title);
+      if(!title) continue; // 행사명 없으면 스킵
+      
+      // 날짜 형식 정규화
+      let dateVal = getVal(colMap.date);
+      if(dateVal){
+        // 엑셀 날짜 시리얼 번호 처리
+        if(/^\d+$/.test(dateVal) && Number(dateVal) > 40000){
+          const excelDate = XLSX.SSF.parse_date_code(Number(dateVal));
+          if(excelDate){
+            dateVal = `${excelDate.y}-${String(excelDate.m).padStart(2,'0')}-${String(excelDate.d).padStart(2,'0')}`;
+          }
+        }
+        // 다양한 날짜 형식 처리 (9.19, 9/19 등)
+        else if(/^\d{1,2}[./]\d{1,2}$/.test(dateVal)){
+          const parts = dateVal.split(/[./]/);
+          const year = new Date().getFullYear();
+          dateVal = `${year}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+        }
+      }
+      
+      // 시간 형식 정규화
+      let timeVal = getVal(colMap.time);
+      // 엑셀 시간 시리얼 처리 (0.xxx)
+      if(/^0\.\d+$/.test(timeVal)){
+        const totalMin = Math.round(Number(timeVal) * 24 * 60);
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        timeVal = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      }
+      
+      let endTimeVal = getVal(colMap.endTime);
+      if(/^0\.\d+$/.test(endTimeVal)){
+        const totalMin = Math.round(Number(endTimeVal) * 24 * 60);
+        const h = Math.floor(totalMin / 60);
+        const m = totalMin % 60;
+        endTimeVal = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      }
+      
+      newPrograms.push({
+        category: getVal(colMap.category) || '일자별',
+        date: dateVal,
+        time: timeVal,
+        endTime: endTimeVal,
+        title: title,
+        loc: getVal(colMap.loc),
+        price: getVal(colMap.price),
+        audience: getVal(colMap.audience),
+        reservation: getVal(colMap.reservation),
+        note: ''
+      });
+    }
+    
+    if(!newPrograms.length){
+      alert('추출된 프로그램이 없습니다.\n행사명이 입력되어 있는지 확인해주세요.');
+      return;
+    }
+    
+    // 기존 항목에 추가
+    _progItems = _progItems.concat(newPrograms);
+    renderProgList(_progItems);
+    
+    // 파일 input 초기화
+    document.getElementById('prog-excel-file').value = '';
+    
+    toast(`${newPrograms.length}개 프로그램이 추가되었습니다!`, 'success');
+    console.log(`✅ 엑셀에서 ${newPrograms.length}개 프로그램 추가`);
+    
+  } catch(err){
+    console.error('엑셀 처리 실패:', err);
+    alert('엑셀 파일을 읽을 수 없습니다.\n\n' + err.message);
+    document.getElementById('prog-excel-file').value = '';
+  }
+}
+
+window.downloadProgramTemplate = downloadProgramTemplate;
+window.handleProgramExcel = handleProgramExcel;
 
 // window에 함수 노출 (onclick으로 호출되도록)
 window.openProgramAI = openProgramAI;
