@@ -785,6 +785,16 @@ let S={
      img:"https://images.unsplash.com/photo-1518895949257-7621c3c786d7?auto=format&fit=crop&w=600&q=80",
      tag:"꽃축제",mx:'37%',my:'24%',cong:88,
      idata:true,
+     programs:[
+       {category:'공연',date:'2026-05-18',time:'13:00',endTime:'',title:"개막 축하공연",loc:'메인무대',price:'무료',audience:'전체',reservation:''},
+       {category:'공연',date:'2026-05-18',time:'18:00',endTime:'19:30',title:"장미 콘서트",loc:'메인무대',price:'무료',audience:'전체',reservation:''},
+       {category:'체험',date:'2026-05-18',time:'10:00',endTime:'17:00',title:"장미 향수 만들기",loc:'체험존',price:'5000',audience:'전체',reservation:'현장접수'},
+       {category:'먹거리',date:'2026-05-18',time:'11:00',endTime:'20:00',title:"플리마켓 & 푸드트럭",loc:'먹거리존',price:'',audience:'전체',reservation:''},
+       {category:'공연',date:'2026-05-19',time:'14:00',endTime:'',title:"버스킹 공연",loc:'장미터널',price:'무료',audience:'전체',reservation:''},
+       {category:'체험',date:'2026-05-19',time:'10:00',endTime:'17:00',title:"압화 책갈피 만들기",loc:'체험존',price:'3000',audience:'어린이',reservation:'현장접수'},
+       {category:'상설행사',date:'',time:'09:00',endTime:'22:00',title:"장미터널 야간 조명",loc:'장미터널',price:'무료',audience:'전체',reservation:'자유참여'},
+       {category:'상설행사',date:'',time:'10:00',endTime:'18:00',title:"포토존 운영",loc:'축제장 전역',price:'무료',audience:'전체',reservation:'자유참여'}
+     ],
      reviews:[{user:"여행자K",star:5,text:"장미터널이 진짜 예뻐요. 야간 조명도 좋음!"},{user:"꽃송이",star:4,text:"사람 많지만 볼 만함"}]},
 
     {id:102,title:"하동 야생차문화축제",loc:"경남 하동군 화개면",date:"05.16 - 05.19",region:'경남',rating:4.6,
@@ -4341,20 +4351,21 @@ function buildSubInfo(){
       note: it.note || ''
     }));
 
-    // 카테고리별 분류
-    const dailyPrograms = programs.filter(p => p.category === '일자별' && p.date);
-    const otherPrograms = programs.filter(p => p.category !== '일자별' || !p.date);
+    // ── 날짜 유무로 분류 (카테고리 종류와 무관!)
+    // 날짜가 있으면 → 날짜 탭 / 날짜가 없으면 → 상설 탭
+    const dailyPrograms = programs.filter(p => p.date);
+    const otherPrograms = programs.filter(p => !p.date);
     
     // 날짜 목록 (고유값, 정렬)
     const uniqueDates = [...new Set(dailyPrograms.map(p => p.date))].sort();
     
-    // 상설 카테고리 목록
-    const otherCategories = [...new Set(otherPrograms.map(p => p.category))].filter(Boolean);
+    // 날짜 없는 프로그램의 카테고리 목록 (상설행사 등)
+    const otherCategories = [...new Set(otherPrograms.map(p => p.category || '기타'))].filter(Boolean);
     
     // 탭 구성: [날짜1, 날짜2, ..., 상설1, 상설2]
     const tabs = [];
     uniqueDates.forEach(dt => tabs.push({key: 'date:' + dt, label: formatDateChip(dt), count: dailyPrograms.filter(p => p.date === dt).length}));
-    otherCategories.forEach(cat => tabs.push({key: 'cat:' + cat, label: cat, count: otherPrograms.filter(p => p.category === cat).length}));
+    otherCategories.forEach(cat => tabs.push({key: 'cat:' + cat, label: cat, count: otherPrograms.filter(p => (p.category || '기타') === cat).length}));
     
     // 현재 선택된 탭 (state에 저장)
     if(!S._progTab || !tabs.find(t => t.key === S._progTab)){
@@ -4429,7 +4440,7 @@ function buildSubInfo(){
     let filteredPrograms = [];
     if(S._progTab && S._progTab.startsWith('cat:')){
       const cat = S._progTab.slice(4);
-      filteredPrograms = otherPrograms.filter(p => p.category === cat);
+      filteredPrograms = otherPrograms.filter(p => (p.category || '기타') === cat);
     } else if(S._progTab && S._progTab.startsWith('date:')){
       const dt = S._progTab.slice(5);
       filteredPrograms = dailyPrograms.filter(p => p.date === dt);
