@@ -4351,10 +4351,10 @@ function buildSubInfo(){
     // 상설 카테고리 목록
     const otherCategories = [...new Set(otherPrograms.map(p => p.category))].filter(Boolean);
     
-    // 탭 구성: [상설1, 상설2, 날짜1, 날짜2, ...]
+    // 탭 구성: [날짜1, 날짜2, ..., 상설1, 상설2]
     const tabs = [];
-    otherCategories.forEach(cat => tabs.push({key: 'cat:' + cat, label: cat, count: otherPrograms.filter(p => p.category === cat).length}));
     uniqueDates.forEach(dt => tabs.push({key: 'date:' + dt, label: formatDateChip(dt), count: dailyPrograms.filter(p => p.date === dt).length}));
+    otherCategories.forEach(cat => tabs.push({key: 'cat:' + cat, label: cat, count: otherPrograms.filter(p => p.category === cat).length}));
     
     // 현재 선택된 탭 (state에 저장)
     if(!S._progTab || !tabs.find(t => t.key === S._progTab)){
@@ -4437,9 +4437,6 @@ function buildSubInfo(){
       filteredPrograms = programs;
     }
     
-    // 시간순 정렬
-    filteredPrograms.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
-    
     if(!filteredPrograms.length){
       const empty = div('');
       css(empty, {textAlign:'center', padding:'40px 20px', color:'#94a3b8'});
@@ -4450,111 +4447,171 @@ function buildSubInfo(){
       ap(empty, eIcon, eText);
       contentArea.appendChild(empty);
     } else {
-      // 타임라인 카드
-      filteredPrograms.forEach((it, i) => {
-        const isLast = i === filteredPrograms.length - 1;
+      // ── 카테고리(프로그램 종류)별로 그룹화
+      // 카테고리 표시 정보 (이모지 + 색상)
+      const catMeta = {
+        '공연':      {emoji:'🎭', color:'#7c3aed', bg:'#f5f3ff', line:'#e9d5ff'},
+        '체험':      {emoji:'🎯', color:'#2563eb', bg:'#eff6ff', line:'#bfdbfe'},
+        '먹거리':    {emoji:'🍽', color:'#d97706', bg:'#fffbeb', line:'#fde68a'},
+        '상설행사':  {emoji:'🎪', color:'#059669', bg:'#ecfdf5', line:'#a7f3d0'},
+        '일자별':    {emoji:'📌', color:'#7c3aed', bg:'#f5f3ff', line:'#e9d5ff'},
+        '기타':      {emoji:'✨', color:'#64748b', bg:'#f8fafc', line:'#e2e8f0'}
+      };
+      
+      // 카테고리 노출 순서
+      const catOrder = ['공연', '체험', '먹거리', '상설행사', '일자별', '기타'];
+      
+      // 프로그램을 카테고리별로 묶기
+      const byCategory = {};
+      filteredPrograms.forEach(p => {
+        const cat = p.category || '기타';
+        if(!byCategory[cat]) byCategory[cat] = [];
+        byCategory[cat].push(p);
+      });
+      
+      // 카테고리 정렬 (정의된 순서 우선, 나머지는 뒤에)
+      const sortedCats = Object.keys(byCategory).sort((a, b) => {
+        const ia = catOrder.indexOf(a); const ib = catOrder.indexOf(b);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+      });
+      
+      // 카테고리가 1개뿐이면 헤더 없이 바로 타임라인
+      const showCatHeader = sortedCats.length > 1;
+      
+      sortedCats.forEach((cat, catIdx) => {
+        const items = byCategory[cat];
+        const meta = catMeta[cat] || catMeta['기타'];
         
-        const row = div('');
-        css(row, {display:'flex', gap:'10px', marginBottom: isLast ? '0' : '10px'});
+        // 시간순 정렬
+        items.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
         
-        // 시간 컬럼
-        const timeCol = div('');
-        css(timeCol, {flexShrink:'0', width:'56px', paddingTop:'10px'});
-        const timeStr = div('');
-        css(timeStr, {fontSize:'15px', fontWeight:'900', color:'#0f172a', lineHeight:'1'});
-        setText(timeStr, it.time || '-');
-        timeCol.appendChild(timeStr);
-        if(it.endTime){
-          const endStr = div('');
-          css(endStr, {fontSize:'10px', fontWeight:'600', color:'#94a3b8', marginTop:'3px'});
-          setText(endStr, '~ ' + it.endTime);
-          timeCol.appendChild(endStr);
+        // ── 카테고리 헤더 (여러 종류일 때만)
+        if(showCatHeader){
+          const catHeader = div('');
+          css(catHeader, {display:'flex', alignItems:'center', gap:'8px',
+            marginTop: catIdx === 0 ? '0' : '20px', marginBottom:'12px'});
+          
+          const catBadge = div('');
+          css(catBadge, {display:'flex', alignItems:'center', gap:'5px',
+            background: meta.bg, color: meta.color, padding:'6px 12px',
+            borderRadius:'10px', fontSize:'13px', fontWeight:'800'});
+          setText(catBadge, meta.emoji + ' ' + cat);
+          catHeader.appendChild(catBadge);
+          
+          const catCount = div('');
+          css(catCount, {fontSize:'12px', fontWeight:'600', color:'#94a3b8'});
+          setText(catCount, items.length + '개');
+          catHeader.appendChild(catCount);
+          
+          contentArea.appendChild(catHeader);
         }
         
-        // 세로선 + 점
-        const dotCol = div('');
-        css(dotCol, {flexShrink:'0', display:'flex', flexDirection:'column', alignItems:'center', width:'12px'});
-        const dot = div('');
-        css(dot, {width:'10px', height:'10px', borderRadius:'50%', 
-          background:'#7c3aed', border:'2px solid #fff',
-          boxShadow:'0 0 0 2px #7c3aed', marginTop:'14px', flexShrink:'0'});
-        dotCol.appendChild(dot);
-        if(!isLast){
-          const line = div('');
-          css(line, {width:'2px', flex:'1', background:'#e9d5ff', marginTop:'4px', minHeight:'20px'});
-          dotCol.appendChild(line);
-        }
-        
-        // 카드
-        const card = div('');
-        css(card, {flex:'1', background:'#fff', borderRadius:'12px', padding:'12px 14px',
-          border:'1px solid #f1f5f9', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', minWidth:'0'});
-        
-        // 제목
-        const title = div('');
-        css(title, {fontSize:'14px', fontWeight:'800', color:'#0f172a', 
-          marginBottom:'6px', lineHeight:'1.35', wordBreak:'keep-all'});
-        setText(title, it.title);
-        card.appendChild(title);
-        
-        // 메타 태그들
-        const meta = div('');
-        css(meta, {display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px'});
-        
-        if(it.loc){
-          const locTag = div('');
-          css(locTag, {display:'flex', alignItems:'center', gap:'2px', fontSize:'11px',
-            color:'#475569', background:'#f8fafc', padding:'3px 8px', borderRadius:'6px', fontWeight:'600'});
-          setText(locTag, '📍 ' + it.loc);
-          meta.appendChild(locTag);
-        }
-        
-        if(it.price){
-          const priceTag = div('');
-          const isFree = /무료|free/i.test(it.price);
-          css(priceTag, {fontSize:'11px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px',
-            color: isFree ? '#059669' : '#dc2626',
-            background: isFree ? '#d1fae5' : '#fee2e2'});
-          const priceText = /^\d+$/.test(it.price) 
-            ? '💰 ' + Number(it.price).toLocaleString() + '원'
-            : '💰 ' + it.price;
-          setText(priceTag, isFree ? '🎁 무료' : priceText);
-          meta.appendChild(priceTag);
-        }
-        
-        if(it.audience && it.audience !== '전체'){
-          const audTag = div('');
-          css(audTag, {fontSize:'11px', fontWeight:'700', color:'#2563eb',
-            background:'#eff6ff', padding:'3px 8px', borderRadius:'6px'});
-          const audEmoji = it.audience === '어린이' ? '👶' : it.audience === '가족' ? '👨‍👩‍👧' : '🎯';
-          setText(audTag, audEmoji + ' ' + it.audience);
-          meta.appendChild(audTag);
-        }
-        
-        if(it.reservation){
-          const resTag = div('');
-          css(resTag, {fontSize:'11px', fontWeight:'700', color:'#92400e',
-            background:'#fef3c7', padding:'3px 8px', borderRadius:'6px'});
-          const resEmoji = it.reservation === '사전예약' ? '📝' : it.reservation === '현장접수' ? '📋' : '🎫';
-          setText(resTag, resEmoji + ' ' + it.reservation);
-          meta.appendChild(resTag);
-        }
-        
-        if(meta.children.length){
-          card.appendChild(meta);
-        }
-        
-        // 비고
-        if(it.note){
-          const noteEl = div('');
-          css(noteEl, {fontSize:'11px', color:'#64748b', marginTop:'6px', 
-            paddingTop:'6px', borderTop:'1px dashed #e5e7eb', lineHeight:'1.4'});
-          setText(noteEl, '💬 ' + it.note);
-          card.appendChild(noteEl);
-        }
-        
-        ap(row, timeCol, dotCol, card);
-        contentArea.appendChild(row);
+        // ── 이 카테고리의 타임라인 카드들
+        items.forEach((it, i) => {
+          const isLast = i === items.length - 1;
+          
+          const row = div('');
+          css(row, {display:'flex', gap:'10px', marginBottom: isLast ? '0' : '10px'});
+          
+          // 시간 컬럼
+          const timeCol = div('');
+          css(timeCol, {flexShrink:'0', width:'56px', paddingTop:'10px'});
+          const timeStr = div('');
+          css(timeStr, {fontSize:'15px', fontWeight:'900', color:'#0f172a', lineHeight:'1'});
+          setText(timeStr, it.time || '-');
+          timeCol.appendChild(timeStr);
+          if(it.endTime){
+            const endStr = div('');
+            css(endStr, {fontSize:'10px', fontWeight:'600', color:'#94a3b8', marginTop:'3px'});
+            setText(endStr, '~ ' + it.endTime);
+            timeCol.appendChild(endStr);
+          }
+          
+          // 세로선 + 점 (카테고리 색상 반영)
+          const dotCol = div('');
+          css(dotCol, {flexShrink:'0', display:'flex', flexDirection:'column', alignItems:'center', width:'12px'});
+          const dot = div('');
+          css(dot, {width:'10px', height:'10px', borderRadius:'50%', 
+            background: meta.color, border:'2px solid #fff',
+            boxShadow:'0 0 0 2px ' + meta.color, marginTop:'14px', flexShrink:'0'});
+          dotCol.appendChild(dot);
+          if(!isLast){
+            const line = div('');
+            css(line, {width:'2px', flex:'1', background: meta.line, marginTop:'4px', minHeight:'20px'});
+            dotCol.appendChild(line);
+          }
+          
+          // 카드
+          const card = div('');
+          css(card, {flex:'1', background:'#fff', borderRadius:'12px', padding:'12px 14px',
+            border:'1px solid #f1f5f9', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', minWidth:'0'});
+          
+          // 제목
+          const title = div('');
+          css(title, {fontSize:'14px', fontWeight:'800', color:'#0f172a', 
+            marginBottom:'6px', lineHeight:'1.35', wordBreak:'keep-all'});
+          setText(title, it.title);
+          card.appendChild(title);
+          
+          // 메타 태그들
+          const metaBox = div('');
+          css(metaBox, {display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px'});
+          
+          if(it.loc){
+            const locTag = div('');
+            css(locTag, {display:'flex', alignItems:'center', gap:'2px', fontSize:'11px',
+              color:'#475569', background:'#f8fafc', padding:'3px 8px', borderRadius:'6px', fontWeight:'600'});
+            setText(locTag, '📍 ' + it.loc);
+            metaBox.appendChild(locTag);
+          }
+          
+          if(it.price){
+            const priceTag = div('');
+            const isFree = /무료|free/i.test(it.price);
+            css(priceTag, {fontSize:'11px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px',
+              color: isFree ? '#059669' : '#dc2626',
+              background: isFree ? '#d1fae5' : '#fee2e2'});
+            const priceText = /^\d+$/.test(it.price) 
+              ? '💰 ' + Number(it.price).toLocaleString() + '원'
+              : '💰 ' + it.price;
+            setText(priceTag, isFree ? '🎁 무료' : priceText);
+            metaBox.appendChild(priceTag);
+          }
+          
+          if(it.audience && it.audience !== '전체'){
+            const audTag = div('');
+            css(audTag, {fontSize:'11px', fontWeight:'700', color:'#2563eb',
+              background:'#eff6ff', padding:'3px 8px', borderRadius:'6px'});
+            const audEmoji = it.audience === '어린이' ? '👶' : it.audience === '가족' ? '👨‍👩‍👧' : '🎯';
+            setText(audTag, audEmoji + ' ' + it.audience);
+            metaBox.appendChild(audTag);
+          }
+          
+          if(it.reservation){
+            const resTag = div('');
+            css(resTag, {fontSize:'11px', fontWeight:'700', color:'#92400e',
+              background:'#fef3c7', padding:'3px 8px', borderRadius:'6px'});
+            const resEmoji = it.reservation === '사전예약' ? '📝' : it.reservation === '현장접수' ? '📋' : '🎫';
+            setText(resTag, resEmoji + ' ' + it.reservation);
+            metaBox.appendChild(resTag);
+          }
+          
+          if(metaBox.children.length){
+            card.appendChild(metaBox);
+          }
+          
+          // 비고
+          if(it.note){
+            const noteEl = div('');
+            css(noteEl, {fontSize:'11px', color:'#64748b', marginTop:'6px', 
+              paddingTop:'6px', borderTop:'1px dashed #e5e7eb', lineHeight:'1.4'});
+            setText(noteEl, '💬 ' + it.note);
+            card.appendChild(noteEl);
+          }
+          
+          ap(row, timeCol, dotCol, card);
+          contentArea.appendChild(row);
+        });
       });
     }
     
