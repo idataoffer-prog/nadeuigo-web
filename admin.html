@@ -284,6 +284,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<!-- Plus Code (Open Location Code) 공식 라이브러리 -->
+<script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
 
 <script>
 // ─────────────────────────────────────────────────────────────
@@ -826,7 +828,10 @@ function openEdit(docId){
         <div class="form-section">
           <div class="section-title">
             <span>📋 프로그램 (공연/행사 일정)</span>
-            <button type="button" class="add-btn" onclick="addProgItem()">+ 항목 추가</button>
+            <div style="display:flex;gap:6px">
+              <button type="button" class="add-btn" onclick="openProgramAI()" style="background:linear-gradient(135deg,#a855f7,#8b5cf6);border-color:#8b5cf6">🤖 이미지로 자동 입력</button>
+              <button type="button" class="add-btn" onclick="addProgItem()">+ 항목 추가</button>
+            </div>
           </div>
           <div id="prog-list" class="prog-list"></div>
         </div>
@@ -1013,38 +1018,119 @@ function renderProgList(items){
   const box = document.getElementById('prog-list');
   if(!box) return;
   if(!_progItems.length){
-    box.innerHTML = `<div class="prog-empty">아직 등록된 프로그램이 없습니다.<br>위의 "+ 항목 추가" 버튼을 눌러 시작하세요.</div>`;
+    box.innerHTML = `<div class="prog-empty">아직 등록된 프로그램이 없습니다.<br>위의 "+ 항목 추가" 버튼 또는 "🤖 이미지로 자동 입력"을 사용해보세요.</div>`;
     return;
   }
-  box.innerHTML = _progItems.map((it, i)=>`
-    <div class="prog-item">
-      <button type="button" class="del-x" onclick="removeProgItem(${i})" title="삭제">×</button>
-      <div class="row">
-        <div class="lbl">시작 시간</div>
-        <select onchange="updateProgItem(${i},'time',this.value)" style="padding:8px;border:1px solid #e5e7eb;border-radius:6px">
-          ${getTimeOptions(it.time)}
-        </select>
-        <span style="font-size:13px;color:#94a3b8;margin-left:8px">또는</span>
-        <input type="text" placeholder="직접 입력 (예: 오후 2:00)" value="${(it.time && !it.time.match(/^\d{2}:\d{2}$/)) ? escapeAttr(it.time) : ''}" oninput="updateProgItem(${i},'time',this.value)" style="flex:1;margin-left:4px">
+  
+  // 카테고리별로 그룹화
+  const grouped = {};
+  _progItems.forEach((it, idx) => {
+    const cat = it.category || '일자별';
+    const dateKey = it.date || '기타';
+    const groupKey = cat === '일자별' ? dateKey : cat;
+    if(!grouped[groupKey]) grouped[groupKey] = [];
+    grouped[groupKey].push({...it, _idx: idx});
+  });
+  
+  // 그룹별 렌더링
+  let html = '';
+  Object.keys(grouped).sort((a,b) => {
+    // 상설류 카테고리 먼저
+    const special = ['상설', '씨푸드파티존', '상설행사', '먹거리'];
+    const aSp = special.some(s => a.includes(s));
+    const bSp = special.some(s => b.includes(s));
+    if(aSp && !bSp) return -1;
+    if(!aSp && bSp) return 1;
+    return a.localeCompare(b);
+  }).forEach(groupKey => {
+    const groupItems = grouped[groupKey];
+    // 그룹 헤더
+    const isDate = /^\d{4}-\d{2}-\d{2}$/.test(groupKey);
+    const dispHeader = isDate ? formatDateHeader(groupKey) : groupKey;
+    html += `<div class="prog-group" style="margin-bottom:16px;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+      <div style="background:#f8fafc;padding:10px 14px;font-weight:700;font-size:13px;color:#0f172a;display:flex;justify-content:space-between;align-items:center">
+        <span>📅 ${escapeAttr(dispHeader)} <span style="color:#94a3b8;font-weight:500">(${groupItems.length}개)</span></span>
       </div>
-      <div class="row">
-        <div class="lbl">행사명</div>
-        <input type="text" placeholder="예: 벚꽃 버스킹 공연" value="${escapeAttr(it.title||'')}" oninput="updateProgItem(${i},'title',this.value)">
-      </div>
-      <div class="row">
-        <div class="lbl">장소</div>
-        <input type="text" placeholder="예: 메인 무대" value="${escapeAttr(it.loc||'')}" oninput="updateProgItem(${i},'loc',this.value)">
-      </div>
-      <div class="row">
-        <div class="lbl">비고</div>
-        <input type="text" placeholder="예: 무료 입장, 혼잡 예상" value="${escapeAttr(it.note||'')}" oninput="updateProgItem(${i},'note',this.value)">
-      </div>
-    </div>
-  `).join('');
+      <div style="padding:8px">`;
+    
+    groupItems.forEach(it => {
+      const i = it._idx;
+      html += `
+        <div class="prog-item" style="margin-bottom:6px">
+          <button type="button" class="del-x" onclick="removeProgItem(${i})" title="삭제">×</button>
+          <div class="row" style="gap:6px">
+            <div class="lbl" style="min-width:60px">카테고리</div>
+            <select onchange="updateProgItem(${i},'category',this.value); renderProgList(_progItems)" style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px">
+              <option value="일자별" ${it.category === '일자별' || !it.category ? 'selected' : ''}>일자별</option>
+              <option value="상설행사" ${it.category === '상설행사' ? 'selected' : ''}>상설행사</option>
+              <option value="먹거리" ${it.category === '먹거리' ? 'selected' : ''}>먹거리/부스</option>
+              <option value="공연" ${it.category === '공연' ? 'selected' : ''}>공연</option>
+              <option value="체험" ${it.category === '체험' ? 'selected' : ''}>체험</option>
+              <option value="기타" ${it.category === '기타' ? 'selected' : ''}>기타</option>
+            </select>
+            ${it.category === '일자별' || !it.category ? `
+              <div class="lbl" style="min-width:40px;margin-left:8px">날짜</div>
+              <input type="date" value="${escapeAttr(it.date||'')}" onchange="updateProgItem(${i},'date',this.value); renderProgList(_progItems)" style="padding:6px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px">
+            ` : ''}
+          </div>
+          <div class="row" style="gap:6px">
+            <div class="lbl" style="min-width:60px">시간</div>
+            <input type="text" placeholder="시작 (예: 13:00 또는 오후 1시)" value="${escapeAttr(it.time||'')}" oninput="updateProgItem(${i},'time',this.value)" style="flex:1;padding:6px 8px;font-size:13px">
+            <span style="color:#94a3b8;font-size:12px">~</span>
+            <input type="text" placeholder="종료 (선택)" value="${escapeAttr(it.endTime||'')}" oninput="updateProgItem(${i},'endTime',this.value)" style="flex:1;padding:6px 8px;font-size:13px">
+          </div>
+          <div class="row">
+            <div class="lbl" style="min-width:60px">행사명</div>
+            <input type="text" placeholder="예: 마당극 '무창포, 폭식 속있수다'" value="${escapeAttr(it.title||'')}" oninput="updateProgItem(${i},'title',this.value)">
+          </div>
+          <div class="row" style="gap:6px">
+            <div class="lbl" style="min-width:60px">장소</div>
+            <input type="text" placeholder="예: 잔디광장" value="${escapeAttr(it.loc||'')}" oninput="updateProgItem(${i},'loc',this.value)" style="flex:1;padding:6px 8px;font-size:13px">
+            <div class="lbl" style="min-width:40px;margin-left:4px">가격</div>
+            <input type="text" placeholder="예: 만원, 무료" value="${escapeAttr(it.price||'')}" oninput="updateProgItem(${i},'price',this.value)" style="width:80px;padding:6px 8px;font-size:13px">
+          </div>
+          <div class="row" style="gap:6px">
+            <div class="lbl" style="min-width:60px">대상</div>
+            <select onchange="updateProgItem(${i},'audience',this.value)" style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px">
+              <option value="" ${!it.audience ? 'selected' : ''}>전체</option>
+              <option value="성인" ${it.audience === '성인' ? 'selected' : ''}>성인</option>
+              <option value="어린이" ${it.audience === '어린이' ? 'selected' : ''}>어린이</option>
+              <option value="가족" ${it.audience === '가족' ? 'selected' : ''}>가족</option>
+            </select>
+            <div class="lbl" style="min-width:40px;margin-left:8px">예약</div>
+            <select onchange="updateProgItem(${i},'reservation',this.value)" style="padding:6px 8px;border:1px solid #e5e7eb;border-radius:6px;font-size:12px">
+              <option value="" ${!it.reservation ? 'selected' : ''}>-</option>
+              <option value="현장접수" ${it.reservation === '현장접수' ? 'selected' : ''}>현장접수</option>
+              <option value="사전예약" ${it.reservation === '사전예약' ? 'selected' : ''}>사전예약</option>
+              <option value="자유참여" ${it.reservation === '자유참여' ? 'selected' : ''}>자유참여</option>
+            </select>
+            <input type="text" placeholder="비고 (선택)" value="${escapeAttr(it.note||'')}" oninput="updateProgItem(${i},'note',this.value)" style="flex:1;margin-left:8px;padding:6px 8px;font-size:12px">
+          </div>
+        </div>`;
+    });
+    
+    html += `</div></div>`;
+  });
+  
+  box.innerHTML = html;
+}
+
+// 날짜 헤더 포맷 (2026-09-19 → 9.19 (금))
+function formatDateHeader(dateStr){
+  if(!dateStr || dateStr === '기타') return dateStr;
+  try {
+    const d = new Date(dateStr);
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = ['일','월','화','수','목','금','토'][d.getDay()];
+    return `${m}.${day} (${dow})`;
+  } catch(e) {
+    return dateStr;
+  }
 }
 
 function addProgItem(){
-  _progItems.push({time:'', title:'', loc:'', note:''});
+  _progItems.push({category:'일자별', date:'', time:'', endTime:'', title:'', loc:'', price:'', audience:'', reservation:'', note:''});
   renderProgList(_progItems);
 }
 
@@ -1055,6 +1141,334 @@ function removeProgItem(i){
 
 function updateProgItem(i, key, val){
   if(_progItems[i]) _progItems[i][key] = val;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🤖 Gemini AI로 프로그램 자동 입력
+// ═══════════════════════════════════════════════════════════════
+
+let _progAIImages = [];
+
+function openProgramAI(){
+  // 기존 모달 제거
+  const existing = document.getElementById('prog-ai-modal');
+  if(existing) existing.remove();
+  
+  const modal = document.createElement('div');
+  modal.id = 'prog-ai-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.onclick = (e) => { if(e.target === modal) closeProgramAI(); };
+  
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:16px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;padding:0">
+      <!-- 헤더 -->
+      <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#a855f7,#8b5cf6);color:#fff;border-radius:16px 16px 0 0">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 style="margin:0;font-size:20px;font-weight:800">🤖 이미지로 프로그램 자동 입력</h3>
+            <p style="margin:4px 0 0;font-size:13px;opacity:0.9">축제 프로그램 사진을 올리면 AI가 자동으로 정리해줍니다</p>
+          </div>
+          <button onclick="closeProgramAI()" style="background:none;border:none;color:#fff;font-size:28px;cursor:pointer;padding:0;line-height:1">×</button>
+        </div>
+      </div>
+      
+      <!-- 본문 -->
+      <div style="padding:24px">
+        <!-- 안내 -->
+        <div style="background:#faf5ff;border-left:3px solid #8b5cf6;padding:12px 14px;margin-bottom:16px;border-radius:6px;font-size:13px;color:#6b21a8">
+          💡 <strong>사용 방법:</strong><br>
+          1. 축제 프로그램 캡처 이미지를 업로드하세요 (여러 장 가능)<br>
+          2. "분석 시작" 버튼을 누르면 AI가 자동으로 정리합니다<br>
+          3. 결과를 확인하고 수정한 뒤 저장하세요
+        </div>
+        
+        <!-- 이미지 업로드 -->
+        <div style="margin-bottom:16px">
+          <label style="display:block;font-weight:700;margin-bottom:8px;font-size:14px">📷 프로그램 이미지</label>
+          <input type="file" id="prog-ai-file" multiple accept="image/*" onchange="handleProgAIFiles(this.files)" style="display:none">
+          <div id="prog-ai-dropzone" onclick="document.getElementById('prog-ai-file').click()" 
+               ondragover="event.preventDefault(); this.style.background='#faf5ff'"
+               ondragleave="this.style.background='#f8fafc'"
+               ondrop="event.preventDefault(); this.style.background='#f8fafc'; handleProgAIFiles(event.dataTransfer.files)"
+               style="border:2px dashed #d1d5db;border-radius:12px;padding:32px;text-align:center;cursor:pointer;background:#f8fafc;transition:all .2s">
+            <div style="font-size:36px;margin-bottom:8px">📸</div>
+            <div style="font-size:14px;color:#475569;font-weight:600;margin-bottom:4px">이미지를 드래그하거나 클릭해서 업로드</div>
+            <div style="font-size:12px;color:#94a3b8">JPG, PNG · 여러 장 선택 가능</div>
+          </div>
+          <div id="prog-ai-preview" style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px"></div>
+        </div>
+        
+        <!-- 옵션 -->
+        <div style="margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div>
+            <label style="display:block;font-weight:700;margin-bottom:8px;font-size:14px">📅 축제 연도 (선택)</label>
+            <input type="number" id="prog-ai-year" placeholder="예: 2026" value="${new Date().getFullYear()}" style="width:120px;padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px">
+            <span style="font-size:12px;color:#64748b;margin-left:8px">이미지에 연도가 없을 때 사용</span>
+          </div>
+          <button type="button" onclick="resetGeminiKey()" style="padding:8px 12px;background:#f8fafc;color:#64748b;border:1px solid #e5e7eb;border-radius:8px;font-size:12px;cursor:pointer">🔑 API 키 재설정</button>
+        </div>
+        
+        <!-- 분석 버튼 -->
+        <button id="prog-ai-analyze-btn" onclick="analyzeProgramImages()" style="width:100%;padding:14px;background:linear-gradient(135deg,#a855f7,#8b5cf6);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:16px">🚀 분석 시작</button>
+        
+        <!-- 결과 표시 -->
+        <div id="prog-ai-result" style="display:none"></div>
+        
+        <!-- 로딩 -->
+        <div id="prog-ai-loading" style="display:none;text-align:center;padding:40px 20px">
+          <div style="font-size:36px;margin-bottom:12px">🤖</div>
+          <div style="font-size:15px;font-weight:600;color:#475569;margin-bottom:6px">AI가 분석 중입니다...</div>
+          <div style="font-size:12px;color:#94a3b8">보통 10-20초 정도 걸려요</div>
+          <div style="margin-top:16px;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden">
+            <div style="height:100%;background:linear-gradient(90deg,#a855f7,#8b5cf6);animation:progLoading 1.5s ease-in-out infinite"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes progLoading {
+        0% { transform: translateX(-100%); width: 30%; }
+        50% { width: 60%; }
+        100% { transform: translateX(400%); width: 30%; }
+      }
+    </style>
+  `;
+  
+  document.body.appendChild(modal);
+  _progAIImages = [];
+}
+
+function closeProgramAI(){
+  const m = document.getElementById('prog-ai-modal');
+  if(m) m.remove();
+  _progAIImages = [];
+}
+
+async function handleProgAIFiles(files){
+  const preview = document.getElementById('prog-ai-preview');
+  if(!preview) return;
+  
+  for(const file of files){
+    if(!file.type.startsWith('image/')) continue;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      _progAIImages.push({
+        name: file.name,
+        dataUrl: dataUrl,
+        base64: dataUrl.split(',')[1],
+        mimeType: file.type
+      });
+      renderProgAIPreview();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function renderProgAIPreview(){
+  const preview = document.getElementById('prog-ai-preview');
+  if(!preview) return;
+  preview.innerHTML = _progAIImages.map((img, i) => `
+    <div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb">
+      <img src="${img.dataUrl}" style="width:100%;height:120px;object-fit:cover;display:block">
+      <button onclick="removeProgAIImage(${i})" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1">×</button>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);color:#fff;padding:4px 6px;font-size:10px;text-align:center;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">${escapeAttr(img.name)}</div>
+    </div>
+  `).join('');
+}
+
+function removeProgAIImage(i){
+  _progAIImages.splice(i, 1);
+  renderProgAIPreview();
+}
+
+async function analyzeProgramImages(){
+  if(!_progAIImages.length){
+    toast('이미지를 먼저 업로드해주세요', 'error');
+    return;
+  }
+  
+  const btn = document.getElementById('prog-ai-analyze-btn');
+  const loading = document.getElementById('prog-ai-loading');
+  const result = document.getElementById('prog-ai-result');
+  const year = document.getElementById('prog-ai-year').value || new Date().getFullYear();
+  
+  btn.style.display = 'none';
+  loading.style.display = 'block';
+  result.style.display = 'none';
+  
+  try {
+    // Gemini API 호출 - localStorage에서 키 가져오기 (GitHub에 노출 방지)
+    let GEMINI_API_KEY = localStorage.getItem('gemini_api_key') || '';
+    
+    // 키가 없으면 사용자에게 입력 받기
+    if(!GEMINI_API_KEY){
+      const inputKey = prompt(
+        '🔑 Gemini API 키를 입력하세요\n\n' +
+        '• 무료로 발급 받으세요: https://aistudio.google.com/app/apikey\n' +
+        '• 한 번만 입력하면 자동 저장됩니다\n' +
+        '• 브라우저에만 저장되며, 외부로 전송되지 않습니다'
+      );
+      if(!inputKey || !inputKey.trim()){
+        loading.style.display = 'none';
+        btn.style.display = 'block';
+        toast('API 키가 필요합니다', 'error');
+        return;
+      }
+      GEMINI_API_KEY = inputKey.trim();
+      localStorage.setItem('gemini_api_key', GEMINI_API_KEY);
+      toast('API 키가 저장되었습니다', 'success');
+    }
+    
+    const modelName = 'gemini-2.0-flash-exp';
+    
+    const prompt = `당신은 축제 프로그램 정보 추출 전문가입니다. 이미지에서 프로그램 정보를 정확하게 추출해주세요.
+
+**추출 규칙:**
+1. 각 프로그램을 개별 항목으로 분리
+2. 카테고리 자동 분류: "일자별"(특정 날짜 행사), "상설행사"(기간 내내), "먹거리"(먹거리 부스/판매), "공연", "체험" 중 선택
+3. 날짜는 YYYY-MM-DD 형식 (연도가 없으면 ${year} 사용)
+4. 시간은 HH:MM 24시간 형식 (예: "13:00")
+5. 상설 프로그램은 여러 날짜 정보를 그대로 표시하고 date는 null
+6. 가격은 숫자만 (예: "10000", 무료면 "무료")
+7. 대상: "성인", "어린이", "가족", "전체" 중 선택
+8. 예약 유형: "현장접수", "사전예약", "자유참여" 중 선택 (해당사항 없으면 빈 문자열)
+
+**JSON 응답 형식 (마크다운 코드 블록 없이 순수 JSON만):**
+{
+  "programs": [
+    {
+      "category": "일자별",
+      "date": "${year}-09-19",
+      "time": "13:00",
+      "endTime": "",
+      "title": "마당극 '무창포, 폭식 속있수다'",
+      "loc": "잔디광장",
+      "price": "",
+      "audience": "전체",
+      "reservation": "",
+      "note": ""
+    }
+  ]
+}
+
+응답은 반드시 유효한 JSON만 반환하세요. 설명, 마크다운 코드 블록, 그 외 텍스트 없이.`;
+    
+    // 요청 body 구성
+    const parts = [{ text: prompt }];
+    _progAIImages.forEach(img => {
+      parts.push({
+        inline_data: {
+          mime_type: img.mimeType,
+          data: img.base64
+        }
+      });
+    });
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: parts }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192
+          }
+        })
+      }
+    );
+    
+    if(!response.ok){
+      const errText = await response.text();
+      throw new Error(`API 오류: ${response.status} - ${errText}`);
+    }
+    
+    const data = await response.json();
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    // JSON 파싱 (마크다운 코드 블록 제거)
+    let jsonStr = textResponse.trim();
+    jsonStr = jsonStr.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```\s*$/, '');
+    
+    const parsed = JSON.parse(jsonStr);
+    const programs = parsed.programs || [];
+    
+    if(!programs.length){
+      throw new Error('프로그램을 찾을 수 없습니다');
+    }
+    
+    // 결과 표시
+    loading.style.display = 'none';
+    result.style.display = 'block';
+    
+    // 카테고리별 그룹화
+    const grouped = {};
+    programs.forEach(p => {
+      const key = p.category === '일자별' ? p.date : p.category;
+      if(!grouped[key]) grouped[key] = [];
+      grouped[key].push(p);
+    });
+    
+    let groupHtml = '';
+    Object.keys(grouped).sort().forEach(key => {
+      const items = grouped[key];
+      const isDate = /^\d{4}-\d{2}-\d{2}$/.test(key);
+      const header = isDate ? formatDateHeader(key) : key;
+      groupHtml += `<div style="margin-bottom:12px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+        <div style="background:#f8fafc;padding:8px 12px;font-weight:700;font-size:13px;color:#0f172a">
+          📅 ${escapeAttr(header)} <span style="color:#94a3b8;font-weight:500">(${items.length}개)</span>
+        </div>
+        <div style="padding:8px 12px">
+          ${items.map(it => `
+            <div style="padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px">
+              <span style="font-weight:700;color:#8b5cf6">${escapeAttr(it.time || '')}${it.endTime ? '~' + escapeAttr(it.endTime) : ''}</span>
+              <span style="margin-left:8px;color:#0f172a">${escapeAttr(it.title || '')}</span>
+              ${it.loc ? `<span style="margin-left:6px;color:#64748b">📍${escapeAttr(it.loc)}</span>` : ''}
+              ${it.price ? `<span style="margin-left:6px;color:#dc2626">💰${escapeAttr(it.price)}</span>` : ''}
+              ${it.audience && it.audience !== '전체' ? `<span style="margin-left:6px;background:#eff6ff;color:#2563eb;padding:1px 6px;border-radius:4px;font-size:10px">${escapeAttr(it.audience)}</span>` : ''}
+              ${it.reservation ? `<span style="margin-left:4px;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-size:10px">${escapeAttr(it.reservation)}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    });
+    
+    result.innerHTML = `
+      <div style="background:#f0fdf4;border-left:3px solid #22c55e;padding:12px 14px;margin-bottom:16px;border-radius:6px;font-size:13px;color:#166534">
+        ✅ <strong>${programs.length}개의 프로그램</strong>이 발견되었습니다! 확인 후 저장하세요.
+      </div>
+      <div style="max-height:400px;overflow-y:auto;margin-bottom:16px">${groupHtml}</div>
+      <div style="display:flex;gap:8px">
+        <button onclick="applyProgramAIResults(${JSON.stringify(programs).replace(/"/g, '&quot;')})" style="flex:1;padding:12px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ 프로그램으로 저장</button>
+        <button onclick="analyzeProgramImages()" style="padding:12px 20px;background:#f8fafc;color:#475569;border:1px solid #e5e7eb;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🔄 다시 분석</button>
+      </div>
+    `;
+    
+  } catch(err) {
+    console.error('AI 분석 실패:', err);
+    loading.style.display = 'none';
+    btn.style.display = 'block';
+    toast('분석 실패: ' + err.message, 'error');
+  }
+}
+
+function applyProgramAIResults(programs){
+  // 기존 항목에 추가
+  _progItems = _progItems.concat(programs);
+  renderProgList(_progItems);
+  closeProgramAI();
+  toast(`${programs.length}개 프로그램이 추가되었습니다!`, 'success');
+}
+
+// API 키 재설정 (기존 키 삭제)
+function resetGeminiKey(){
+  if(confirm('저장된 API 키를 삭제하시겠습니까?\n\n다음 사용 시 새로 입력해야 합니다.')){
+    localStorage.removeItem('gemini_api_key');
+    toast('API 키가 삭제되었습니다', 'success');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -2264,113 +2678,51 @@ async function searchAddress(){
 
 // ───────────────────────────────────────────────────────
 // Plus Code (Open Location Code) → 좌표 변환
-// 라이브러리 없이 자체 구현
+// Google 공식 라이브러리 사용 (openlocationcode.min.js)
 // ───────────────────────────────────────────────────────
 
-const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
-const OLC_BASE = 20;
-
-// Plus Code 전체 코드 디코딩 (예: "8Q98H49R+G7")
+// 공식 라이브러리 래퍼 함수
 function olcDecode(code){
-  let clean = code.replace(/[+0\s]/g, '').toUpperCase();
-  if(clean.length < 8) return null;
-  
-  let lat = -90, lng = -180;
-  let latRes = OLC_BASE, lngRes = OLC_BASE;
-  
-  // 처음 10자는 페어 (각 자리 2개씩 = 5쌍)
-  const pairCount = Math.min(10, clean.length);
-  for(let i = 0; i < pairCount; i += 2){
-    if(i + 1 >= clean.length) break;
-    const latIdx = OLC_ALPHABET.indexOf(clean[i]);
-    const lngIdx = OLC_ALPHABET.indexOf(clean[i + 1]);
-    if(latIdx < 0 || lngIdx < 0) return null;
-    
-    lat += latIdx * latRes;
-    lng += lngIdx * lngRes;
-    latRes /= OLC_BASE;
-    lngRes /= OLC_BASE;
+  try {
+    if(!window.OpenLocationCode) return null;
+    const olc = new window.OpenLocationCode();
+    const area = olc.decode(code);
+    return {
+      lat: area.latitudeCenter,
+      lng: area.longitudeCenter,
+      latPrec: area.latitudeHi - area.latitudeLo,
+      lngPrec: area.longitudeHi - area.longitudeLo
+    };
+  } catch(e) {
+    console.error('olcDecode 실패:', e);
+    return null;
   }
-  
-  // 11자부터는 grid (한 자리에 위도/경도 둘 다 인코딩)
-  // 각 자리: 위 4 × 5 그리드 (4 위도, 5 경도)
-  let gridLatRes = latRes * OLC_BASE;
-  let gridLngRes = lngRes * OLC_BASE;
-  
-  for(let i = 10; i < clean.length; i++){
-    const idx = OLC_ALPHABET.indexOf(clean[i]);
-    if(idx < 0) return null;
-    
-    if(i === 10){
-      gridLatRes = latRes; // 20에서 시작
-      gridLngRes = lngRes;
-    }
-    
-    const row = Math.floor(idx / 5);
-    const col = idx % 5;
-    
-    gridLatRes /= 4;
-    gridLngRes /= 5;
-    
-    lat += row * gridLatRes;
-    lng += col * gridLngRes;
-  }
-  
-  // 중심점 반환
-  const finalLatRes = clean.length <= 10 ? latRes * OLC_BASE : gridLatRes;
-  const finalLngRes = clean.length <= 10 ? lngRes * OLC_BASE : gridLngRes;
-  
-  return {
-    lat: lat + finalLatRes / 2,
-    lng: lng + finalLngRes / 2
-  };
 }
 
-// 짧은 Plus Code → 전체 코드 복구 (기준 좌표 필요)
+function olcEncode(lat, lng, codeLength){
+  try {
+    if(!window.OpenLocationCode) return null;
+    const olc = new window.OpenLocationCode();
+    return olc.encode(lat, lng, codeLength || 10);
+  } catch(e) {
+    console.error('olcEncode 실패:', e);
+    return null;
+  }
+}
+
 function olcRecoverNearest(shortCode, refLat, refLng){
-  // shortCode 예: "H49R+G7" (8자)
-  // 전체 코드는 10-11자
-  // 누락된 앞부분 4-6자를 기준 좌표로부터 추정
-  
-  const cleanShort = shortCode.replace(/\s/g, '').toUpperCase();
-  if(!cleanShort.includes('+')) return null;
-  
-  // 누락된 앞 자릿수 추정
-  const padding = 10 - (cleanShort.length - 1); // -1은 '+' 빼기
-  
-  // 기준 좌표를 OLC 인코딩
-  const refEncoded = olcEncodeFull(refLat, refLng);
-  if(!refEncoded) return null;
-  
-  // 앞부분 padding 자리만큼 가져와서 합치기
-  const prefix = refEncoded.substring(0, padding);
-  const fullCode = prefix + cleanShort;
-  
-  return fullCode;
+  try {
+    if(!window.OpenLocationCode) return null;
+    const olc = new window.OpenLocationCode();
+    return olc.recoverNearest(shortCode, refLat, refLng);
+  } catch(e) {
+    console.error('olcRecoverNearest 실패:', e);
+    return null;
+  }
 }
 
-// 좌표 → 전체 Plus Code 인코딩 (기준점 만들기용)
 function olcEncodeFull(lat, lng){
-  let latVal = lat + 90;
-  let lngVal = lng + 180;
-  
-  let code = '';
-  let latRes = OLC_BASE;
-  let lngRes = OLC_BASE;
-  
-  // 10자리 (5쌍) 페어 인코딩
-  for(let i = 0; i < 5; i++){
-    const latDigit = Math.floor(latVal / latRes);
-    const lngDigit = Math.floor(lngVal / lngRes);
-    code += OLC_ALPHABET[latDigit] + OLC_ALPHABET[lngDigit];
-    latVal -= latDigit * latRes;
-    lngVal -= lngDigit * lngRes;
-    latRes /= OLC_BASE;
-    lngRes /= OLC_BASE;
-  }
-  
-  // '+' 삽입 (8번째 자리 다음)
-  return code.substring(0, 8) + '+' + code.substring(8);
+  return olcEncode(lat, lng, 10);
 }
 
 async function convertPlusCode(){

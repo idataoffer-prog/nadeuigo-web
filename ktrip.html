@@ -1430,6 +1430,21 @@ function setText(e,t){e.textContent=t;return e;}
 function setHTML(e,h){e.innerHTML=h;return e;}
 function css(e,s){Object.assign(e.style,s);return e;}
 
+// 날짜 → "9/19 금" 스타일로 변환
+function formatDateChip(dateStr){
+  if(!dateStr) return dateStr;
+  try {
+    const d = new Date(dateStr);
+    if(isNaN(d.getTime())) return dateStr;
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const dow = ['일','월','화','수','목','금','토'][d.getDay()];
+    return `${m}/${day} ${dow}`;
+  } catch(e) {
+    return dateStr;
+  }
+}
+
 // ── 스크롤 위치 저장소
 const _scrollPos={};
 function _saveScroll(){
@@ -4312,81 +4327,238 @@ function buildSubInfo(){
 
   if(id==='program'){
 
-    // ── 히어로 섹션
-    const _hero_program=div('cong-hero');
-    css(_hero_program,'');
-    const _badge_program=div('cong-badge','📋 오늘의 프로그램');
-    css(_badge_program,{background:'#f5f3ff',color:'#7c3aed'});
-    const _msg_program=div('');
-    css(_msg_program,{fontSize:'15px',fontWeight:'700',color:'#64748b',marginTop:'4px'});
-    setText(_msg_program,'공연·행사 일정을 확인하세요');
-    ap(_hero_program,_badge_program,_msg_program);
-    body.appendChild(_hero_program);
-    css(body,{background:'#f8fafc',padding:'0 0 40px'});
-    // 타임라인 구분선
-    const timeline=div('');css(timeline,{position:'relative'});
+    // ── 데이터 정규화 (구버전/신버전 호환)
+    const programs = (d.items || []).map(it => ({
+      category: it.category || '일자별',
+      date: it.date || '',
+      time: it.time || '',
+      endTime: it.endTime || '',
+      title: it.title || '',
+      loc: it.loc || '',
+      price: it.price || '',
+      audience: it.audience || '',
+      reservation: it.reservation || '',
+      note: it.note || ''
+    }));
 
-    d.items.forEach((it,i)=>{
-      const isLast=i===d.items.length-1;
-
-      const row=div('');
-      css(row,{display:'flex',gap:'12px',marginBottom:isLast?'0':'10px'});
-
-      // 왼쪽 시간 컬럼
-      const timeCol=div('');
-      css(timeCol,{flexShrink:'0',width:'52px',textAlign:'right',paddingTop:'12px'});
-      const timeStr=it.time.replace('오후','').replace('오전','').trim();
-      const ampm=it.time.includes('오후')?'PM':'AM';
-      const tNum=div('');
-      css(tNum,{fontSize:'14px',fontWeight:'800',color:'#1e293b',lineHeight:'1'});
-      setText(tNum,timeStr);
-      const tAmpm=div('');
-      css(tAmpm,{fontSize:'9px',fontWeight:'600',color:'#94a3b8',marginTop:'2px'});
-      setText(tAmpm,ampm);
-      ap(timeCol,tNum,tAmpm);
-
-      // 가운데 점 + 선
-      const dotCol=div('');
-      css(dotCol,{flexShrink:'0',display:'flex',flexDirection:'column',alignItems:'center',gap:'0'});
-      const dot=div('');
-      css(dot,{width:'10px',height:'10px',borderRadius:'50%',background:'#1e293b',
-        flexShrink:'0',marginTop:'14px',zIndex:'1'});
-      if(!isLast){
-        const line=div('');
-        css(line,{width:'1px',flex:'1',background:'#e2e8f0',marginTop:'4px',minHeight:'28px'});
-        ap(dotCol,dot,line);
-      } else {
-        dotCol.appendChild(dot);
+    // 카테고리별 분류
+    const dailyPrograms = programs.filter(p => p.category === '일자별' && p.date);
+    const otherPrograms = programs.filter(p => p.category !== '일자별' || !p.date);
+    
+    // 날짜 목록 (고유값, 정렬)
+    const uniqueDates = [...new Set(dailyPrograms.map(p => p.date))].sort();
+    
+    // 상설 카테고리 목록
+    const otherCategories = [...new Set(otherPrograms.map(p => p.category))].filter(Boolean);
+    
+    // 탭 구성: [상설1, 상설2, 날짜1, 날짜2, ...]
+    const tabs = [];
+    otherCategories.forEach(cat => tabs.push({key: 'cat:' + cat, label: cat, count: otherPrograms.filter(p => p.category === cat).length}));
+    uniqueDates.forEach(dt => tabs.push({key: 'date:' + dt, label: formatDateChip(dt), count: dailyPrograms.filter(p => p.date === dt).length}));
+    
+    // 현재 선택된 탭 (state에 저장)
+    if(!S._progTab || !tabs.find(t => t.key === S._progTab)){
+      // 오늘 날짜와 가장 가까운 탭 선택
+      const today = new Date().toISOString().split('T')[0];
+      const closestDate = uniqueDates.find(d => d >= today) || uniqueDates[uniqueDates.length - 1];
+      if(closestDate){
+        S._progTab = 'date:' + closestDate;
+      } else if(tabs.length){
+        S._progTab = tabs[0].key;
       }
-
-      // 오른쪽 카드
-      const card=div('');
-      css(card,{flex:'1',background:'#fff',borderRadius:'12px',padding:'12px 14px',
-        border:'1px solid #f1f5f9',minWidth:'0'});
-
-      const title=div('');
-      css(title,{fontSize:'14px',fontWeight:'800',color:'#0f172a',marginBottom:'6px',lineHeight:'1.3'});
-      setText(title,it.title);
-
-      const metaRow=div('');css(metaRow,{display:'flex',gap:'6px',flexWrap:'wrap'});
-
-      const locTag=div('');
-      css(locTag,{display:'flex',alignItems:'center',gap:'3px',fontSize:'11px',
-        color:'#64748b',background:'#f8fafc',padding:'3px 8px',borderRadius:'6px'});
-      setText(locTag,'📍 '+it.loc);
-
-      const noteTag=div('');
-      css(noteTag,{fontSize:'11px',fontWeight:'600',color:'#475569',
-        background:'#f1f5f9',padding:'3px 8px',borderRadius:'6px'});
-      setText(noteTag,it.note);
-
-      ap(metaRow,locTag,noteTag);
-      ap(card,title,metaRow);
-      ap(row,timeCol,dotCol,card);
-      timeline.appendChild(row);
-    });
-
-    body.appendChild(timeline);
+    }
+    
+    // ── 히어로 섹션 (컴팩트)
+    const heroSec = div('');
+    css(heroSec, {padding:'12px 16px 8px', background:'#fff'});
+    const heroBadge = div('');
+    css(heroBadge, {display:'inline-block', background:'#f5f3ff', color:'#7c3aed', 
+      padding:'4px 10px', borderRadius:'12px', fontSize:'11px', fontWeight:'700', marginBottom:'6px'});
+    setText(heroBadge, '📋 프로그램');
+    const heroTitle = div('');
+    css(heroTitle, {fontSize:'20px', fontWeight:'900', color:'#0f172a', letterSpacing:'-0.5px'});
+    setText(heroTitle, '축제 일정');
+    const heroSub = div('');
+    css(heroSub, {fontSize:'12px', fontWeight:'600', color:'#94a3b8', marginTop:'2px'});
+    setText(heroSub, `전체 ${programs.length}개의 프로그램`);
+    ap(heroSec, heroBadge, heroTitle, heroSub);
+    body.appendChild(heroSec);
+    
+    // ── 탭 바 (가로 스크롤)
+    if(tabs.length > 0){
+      const tabWrap = div('');
+      css(tabWrap, {background:'#fff', borderBottom:'1px solid #f1f5f9', position:'sticky', top:'0', zIndex:'10'});
+      const tabScroll = div('');
+      css(tabScroll, {display:'flex', gap:'6px', padding:'10px 16px', overflowX:'auto', 
+        scrollbarWidth:'none', msOverflowStyle:'none'});
+      tabScroll.style.cssText += ';-webkit-overflow-scrolling:touch';
+      
+      tabs.forEach(tab => {
+        const isActive = S._progTab === tab.key;
+        const chip = div('');
+        css(chip, {
+          flexShrink:'0', padding:'8px 14px', borderRadius:'20px', 
+          fontSize:'12px', fontWeight:'700', cursor:'pointer',
+          background: isActive ? '#7c3aed' : '#f1f5f9',
+          color: isActive ? '#fff' : '#475569',
+          transition:'all .15s',
+          display:'flex', alignItems:'center', gap:'4px'
+        });
+        const chipLabel = el('span','');
+        setText(chipLabel, tab.label);
+        chip.appendChild(chipLabel);
+        const chipCount = el('span','');
+        css(chipCount, {fontSize:'10px', opacity: isActive ? '0.9' : '0.6', marginLeft:'2px'});
+        setText(chipCount, tab.count);
+        chip.appendChild(chipCount);
+        chip.onclick = () => {
+          S._progTab = tab.key;
+          render();
+        };
+        tabScroll.appendChild(chip);
+      });
+      
+      tabWrap.appendChild(tabScroll);
+      body.appendChild(tabWrap);
+    }
+    
+    // ── 선택된 탭의 프로그램 표시
+    const contentArea = div('');
+    css(contentArea, {padding:'16px'});
+    
+    let filteredPrograms = [];
+    if(S._progTab && S._progTab.startsWith('cat:')){
+      const cat = S._progTab.slice(4);
+      filteredPrograms = otherPrograms.filter(p => p.category === cat);
+    } else if(S._progTab && S._progTab.startsWith('date:')){
+      const dt = S._progTab.slice(5);
+      filteredPrograms = dailyPrograms.filter(p => p.date === dt);
+    } else {
+      filteredPrograms = programs;
+    }
+    
+    // 시간순 정렬
+    filteredPrograms.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    
+    if(!filteredPrograms.length){
+      const empty = div('');
+      css(empty, {textAlign:'center', padding:'40px 20px', color:'#94a3b8'});
+      const eIcon = div(''); css(eIcon, {fontSize:'32px', marginBottom:'8px'});
+      setText(eIcon, '📅');
+      const eText = div(''); css(eText, {fontSize:'13px', fontWeight:'600'});
+      setText(eText, '이 일자에 예정된 프로그램이 없어요');
+      ap(empty, eIcon, eText);
+      contentArea.appendChild(empty);
+    } else {
+      // 타임라인 카드
+      filteredPrograms.forEach((it, i) => {
+        const isLast = i === filteredPrograms.length - 1;
+        
+        const row = div('');
+        css(row, {display:'flex', gap:'10px', marginBottom: isLast ? '0' : '10px'});
+        
+        // 시간 컬럼
+        const timeCol = div('');
+        css(timeCol, {flexShrink:'0', width:'56px', paddingTop:'10px'});
+        const timeStr = div('');
+        css(timeStr, {fontSize:'15px', fontWeight:'900', color:'#0f172a', lineHeight:'1'});
+        setText(timeStr, it.time || '-');
+        timeCol.appendChild(timeStr);
+        if(it.endTime){
+          const endStr = div('');
+          css(endStr, {fontSize:'10px', fontWeight:'600', color:'#94a3b8', marginTop:'3px'});
+          setText(endStr, '~ ' + it.endTime);
+          timeCol.appendChild(endStr);
+        }
+        
+        // 세로선 + 점
+        const dotCol = div('');
+        css(dotCol, {flexShrink:'0', display:'flex', flexDirection:'column', alignItems:'center', width:'12px'});
+        const dot = div('');
+        css(dot, {width:'10px', height:'10px', borderRadius:'50%', 
+          background:'#7c3aed', border:'2px solid #fff',
+          boxShadow:'0 0 0 2px #7c3aed', marginTop:'14px', flexShrink:'0'});
+        dotCol.appendChild(dot);
+        if(!isLast){
+          const line = div('');
+          css(line, {width:'2px', flex:'1', background:'#e9d5ff', marginTop:'4px', minHeight:'20px'});
+          dotCol.appendChild(line);
+        }
+        
+        // 카드
+        const card = div('');
+        css(card, {flex:'1', background:'#fff', borderRadius:'12px', padding:'12px 14px',
+          border:'1px solid #f1f5f9', boxShadow:'0 1px 3px rgba(0,0,0,0.04)', minWidth:'0'});
+        
+        // 제목
+        const title = div('');
+        css(title, {fontSize:'14px', fontWeight:'800', color:'#0f172a', 
+          marginBottom:'6px', lineHeight:'1.35', wordBreak:'keep-all'});
+        setText(title, it.title);
+        card.appendChild(title);
+        
+        // 메타 태그들
+        const meta = div('');
+        css(meta, {display:'flex', gap:'4px', flexWrap:'wrap', marginTop:'4px'});
+        
+        if(it.loc){
+          const locTag = div('');
+          css(locTag, {display:'flex', alignItems:'center', gap:'2px', fontSize:'11px',
+            color:'#475569', background:'#f8fafc', padding:'3px 8px', borderRadius:'6px', fontWeight:'600'});
+          setText(locTag, '📍 ' + it.loc);
+          meta.appendChild(locTag);
+        }
+        
+        if(it.price){
+          const priceTag = div('');
+          const isFree = /무료|free/i.test(it.price);
+          css(priceTag, {fontSize:'11px', fontWeight:'700', padding:'3px 8px', borderRadius:'6px',
+            color: isFree ? '#059669' : '#dc2626',
+            background: isFree ? '#d1fae5' : '#fee2e2'});
+          const priceText = /^\d+$/.test(it.price) 
+            ? '💰 ' + Number(it.price).toLocaleString() + '원'
+            : '💰 ' + it.price;
+          setText(priceTag, isFree ? '🎁 무료' : priceText);
+          meta.appendChild(priceTag);
+        }
+        
+        if(it.audience && it.audience !== '전체'){
+          const audTag = div('');
+          css(audTag, {fontSize:'11px', fontWeight:'700', color:'#2563eb',
+            background:'#eff6ff', padding:'3px 8px', borderRadius:'6px'});
+          const audEmoji = it.audience === '어린이' ? '👶' : it.audience === '가족' ? '👨‍👩‍👧' : '🎯';
+          setText(audTag, audEmoji + ' ' + it.audience);
+          meta.appendChild(audTag);
+        }
+        
+        if(it.reservation){
+          const resTag = div('');
+          css(resTag, {fontSize:'11px', fontWeight:'700', color:'#92400e',
+            background:'#fef3c7', padding:'3px 8px', borderRadius:'6px'});
+          const resEmoji = it.reservation === '사전예약' ? '📝' : it.reservation === '현장접수' ? '📋' : '🎫';
+          setText(resTag, resEmoji + ' ' + it.reservation);
+          meta.appendChild(resTag);
+        }
+        
+        if(meta.children.length){
+          card.appendChild(meta);
+        }
+        
+        // 비고
+        if(it.note){
+          const noteEl = div('');
+          css(noteEl, {fontSize:'11px', color:'#64748b', marginTop:'6px', 
+            paddingTop:'6px', borderTop:'1px dashed #e5e7eb', lineHeight:'1.4'});
+          setText(noteEl, '💬 ' + it.note);
+          card.appendChild(noteEl);
+        }
+        
+        ap(row, timeCol, dotCol, card);
+        contentArea.appendChild(row);
+      });
+    }
+    
+    body.appendChild(contentArea);
   }
 
   else if(id==='coupon'){
