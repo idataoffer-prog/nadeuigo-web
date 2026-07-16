@@ -4383,6 +4383,16 @@ function buildSubInfo(){
     const heroSub = div('');
     css(heroSub, {fontSize:'12px', fontWeight:'600', color:'#94a3b8', marginTop:'2px'});
     setText(heroSub, `전체 ${programs.length}개의 프로그램 · v2`);
+    // ── 디버그: 첫 항목 실제 구조 표시 (확인 후 제거)
+    if(d.items && d.items.length){
+      const dbg = div('');
+      css(dbg, {fontSize:'10px', color:'#dc2626', background:'#fef2f2', padding:'8px',
+        marginTop:'6px', borderRadius:'6px', wordBreak:'break-all', fontFamily:'monospace', lineHeight:'1.4'});
+      const raw = d.items[0];
+      const keys = Object.keys(raw).join(', ');
+      setText(dbg, '🔍 첫 항목 필드: [' + keys + ']  |  category="' + (raw.category||'없음') + '" date="' + (raw.date||'없음') + '"');
+      heroSec.appendChild(dbg);
+    }
     ap(heroSec, heroBadge, heroTitle, heroSub);
     body.appendChild(heroSec);
 
