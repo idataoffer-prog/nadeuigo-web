@@ -17,6 +17,34 @@ window.addEventListener('error', function(e){
   }
 }, true);
 console.log('[나들이go][진단] 페이지 URL: ' + location.href);
+
+/* ── 진단: 실행 중 오류가 나면 화면 상단에 빨간 배너로 표시 (원인 파악용) */
+window.addEventListener('error', function(e){
+  if(e.target && (e.target.src || e.target.href)) return; // 리소스 실패는 위에서 처리
+  try{
+    var box = document.getElementById('err-overlay');
+    if(!box){
+      box = document.createElement('div');
+      box.id = 'err-overlay';
+      box.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#dc2626;color:#fff;font-size:11px;padding:10px 34px 10px 10px;font-family:monospace;line-height:1.5;word-break:break-all;max-height:45%;overflow:auto;';
+      var x = document.createElement('div');
+      x.textContent = '✕';
+      x.style.cssText = 'position:absolute;top:6px;right:10px;font-size:16px;cursor:pointer;';
+      x.onclick = function(){ box.remove(); };
+      box.appendChild(x);
+      document.documentElement.appendChild(box);
+    }
+    var line = document.createElement('div');
+    line.textContent = '⚠ ' + (e.message || '오류') + ' @줄 ' + (e.lineno || '?');
+    box.appendChild(line);
+  }catch(_){}
+});
+window.addEventListener('unhandledrejection', function(e){
+  try{
+    var msg = (e.reason && (e.reason.message || String(e.reason))) || '비동기 오류';
+    window.dispatchEvent(new ErrorEvent('error', { message: '[Promise] ' + msg }));
+  }catch(_){}
+});
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
@@ -715,7 +743,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720C';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -10605,8 +10633,8 @@ function loadScriptOnce(src){
   if(fbOk){
     // 축제 데이터 로드
     await loadFestivalsFromFirestore();
-    // 주간 조회수 로드 (핫플 BEST3용, 백그라운드 — 완료되면 홈 갱신)
-    loadWeeklyViews().then(() => { if(S.tab === 'home' && !S.item) render(); });
+    // 주간 조회수 로드 (핫플 BEST3용, 백그라운드 — 로그인 후 홈이면 갱신)
+    loadWeeklyViews().then(() => { if(S.user && S.tab === 'home' && !S.item) render(); });
     // 카테고리 로드
     await loadCategoriesFromFirestore();
     // 카테고리 실시간 구독 (관리자가 수정하면 즉시 반영)
