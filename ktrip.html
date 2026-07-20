@@ -715,7 +715,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716E';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260716F';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4340,6 +4340,7 @@ function buildSubInfo(){
     const key = S.subData.id;
     // 이미 검색해서 주입된 데이터가 있으면 사용
     if(Array.isArray(S.item[key]) && S.item[key].length){
+      console.log('[나들이go][진단] ' + key + ' 데이터 출처: ' + (S.item[key][0].url ? '카카오 검색' : '저장된 데이터') + ' | 축제좌표: ' + S.item.lat + ',' + S.item.lng);
       d = {
         summary: key==='food' ? `주변 맛집 ${S.item[key].length}곳` :
                  key==='hotels' ? `근처 숙박 ${S.item[key].length}곳` :
@@ -4347,10 +4348,20 @@ function buildSubInfo(){
         items: S.item[key],
         tip: baseInfo.tip || ''
       };
+    } else if(S._nearbyFail){
+      // 카카오 검색 실패 → 재시도 안내
+      d = {
+        summary: '주변 정보를 불러오지 못했어요',
+        items: [],
+        tip: '네트워크 연결을 확인한 뒤 아래를 눌러 다시 시도해주세요.',
+        _retry: true
+      };
     } else {
       // 비동기로 카카오 검색 후 다시 렌더링
+      console.log('[나들이go][진단] ' + key + ' 카카오 검색 시작 | 축제좌표: ' + (S.item.lat||'없음') + ',' + (S.item.lng||'없음') + ' | kakaoReady=' + kakaoReady);
       injectNearbyToFestival().then(ok=>{
-        if(ok) render();
+        if(ok){ S._nearbyFail = false; render(); }
+        else { S._nearbyFail = true; render(); }
       });
       // 일단 로딩 표시
       d = {
@@ -4372,6 +4383,21 @@ function buildSubInfo(){
   const id=S.subData.id;
 
   // 서비스별 렌더링
+
+  // 맛집/숙박/약국 공통: 카카오 검색 실패 시 재시도 화면
+  if(['food','hotels','pharmacy'].includes(id) && d._retry){
+    const rWrap=div('');css(rWrap,{textAlign:'center',padding:'60px 20px'});
+    const rIco=div('');css(rIco,{fontSize:'40px',marginBottom:'12px'});setText(rIco,'📡');
+    const rTxt=div('');css(rTxt,{fontSize:'14px',fontWeight:'700',color:'#475569',marginBottom:'6px'});setText(rTxt,'주변 정보를 불러오지 못했어요');
+    const rSub=div('');css(rSub,{fontSize:'12px',color:'#94a3b8',marginBottom:'20px'});setText(rSub,'네트워크 연결을 확인해주세요');
+    const rBtn=btn('','다시 시도',()=>{S._nearbyFail=false;render();});
+    css(rBtn,{padding:'12px 32px',borderRadius:'12px',border:'none',cursor:'pointer',
+      background:'#ef8200',color:'#fff',fontSize:'14px',fontWeight:'700'});
+    ap(rWrap,rIco,rTxt,rSub,rBtn);
+    body.appendChild(rWrap);
+    ap(modal,hdr,body);
+    return modal;
+  }
 
   if(id==='program'){
 
@@ -10267,10 +10293,16 @@ const KAKAO_CATEGORIES = {
 
 function initKakaoMap(){
   return new Promise(async (resolve)=>{
-    // SDK가 늦게 로드될 수 있으므로 최대 10초 대기
-    const ok = await waitForSdk(() => typeof kakao !== 'undefined' && kakao.maps, 10000);
+    // SDK가 늦게 로드될 수 있으므로 대기
+    let ok = await waitForSdk(() => typeof kakao !== 'undefined' && kakao.maps, 6000);
     if(!ok){
-      console.warn('[나들이go] 카카오맵 SDK 로드 안됨 (10초 대기 후에도 실패)');
+      // 1차 실패 → 스크립트 동적 재로드 (모바일 불안정 네트워크 대응)
+      console.warn('[나들이go] 카카오맵 SDK 1차 실패 → 재로드 시도');
+      await loadScriptOnce('https://dapi.kakao.com/v2/maps/sdk.js?appkey=5d2ab5e5924a9cc895f2e40dd1238646&libraries=services&autoload=false');
+      ok = await waitForSdk(() => typeof kakao !== 'undefined' && kakao.maps, 4000);
+    }
+    if(!ok){
+      console.warn('[나들이go] 카카오맵 SDK 로드 안됨 (재로드 후에도 실패)');
       resolve(false); return;
     }
     kakao.maps.load(()=>{
