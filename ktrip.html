@@ -715,7 +715,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716H';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1646,12 +1646,56 @@ function getPersonalizedRecommendations(festivals){
   }
 }
 
+// ── 조회수 기록: 축제 상세를 열 때마다 Firestore에 일자별 +1
+function recordViewToFs(f){
+  try{
+    if(!db || typeof firebase === 'undefined') return;
+    const fid = String(f.id || f.title).replace(/[\/\s#]/g,'_');
+    const n = new Date();
+    const d = n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0');
+    db.collection('festival_views').doc(fid+'_'+d).set({
+      festId: f.id || f.title,
+      title: f.title || '',
+      date: d,
+      count: firebase.firestore.FieldValue.increment(1)
+    }, {merge:true}).catch(()=>{});
+  }catch(e){}
+}
+
 function openDetail(f){
   // 본 축제 기록 (로컬 저장소)
   recordFestivalView(f.id || f.title, f.tag, f.region);
+  // 조회수 기록 (Firestore — 이번주 핫플 집계용)
+  recordViewToFs(f);
   setState({item:f,sub:null});
 }
 function openInfo(id,title){setState({sub:'info',subData:{id,title}});}
+
+// ── 갤럭시 하드웨어 뒤로가기 버튼 처리 (앱에서 injectJavaScript로 호출)
+// 열려있는 화면을 깊은 것부터 한 단계씩 닫음. 닫을 게 없으면 false(앱 종료 허용)
+window.handleAppBack = function(){
+  try{
+    if(S.couponModal){ S.couponModal=null; render(); return true; }
+    if(S.chatRoomId){ S.chatRoomId=null; render(); return true; }
+    if(S.selectedMate){ S.selectedMate=null; render(); return true; }
+    if(S.writeStep && S.writeStep>0){ S.writeStep=0; S.writeData={}; render(); return true; }
+    if(S.mateView){ S.mateView=null; render(); return true; }
+    if(S.showSearch){ S.showSearch=false; render(); return true; }
+    if(S.showDna){ S.showDna=false; S.dnaStep=0; render(); return true; }
+    if(S.showNotif){ S.showNotif=false; render(); return true; }
+    if(S.showLiked||S.showMyReviews||S.showNotice||S.showFaq||S.showSettings||S.showMyTickets){
+      S.showLiked=false; S.showMyReviews=false; S.showNotice=false;
+      S.showFaq=false; S.showSettings=false; S.showMyTickets=null;
+      render(); return true;
+    }
+    if(S.sub){ goBack({sub:null}); return true; }
+    if(S.item){ goBack({item:null, sub:null}); return true; }
+    if(S.showAllLive||S.showAllBest){ S.showAllLive=false; S.showAllBest=false; render(); return true; }
+    if(S.selectedRegion||S.selectedTheme){ S.selectedRegion=null; S.selectedTheme=null; render(); return true; }
+    if(S.tab!=='home'){ S.tab='home'; render(); return true; }
+  }catch(e){}
+  return false; // 홈 최상위 → 앱 종료 허용
+};
 
 function goBack(stateUpdate){
   const app=document.getElementById('app');
@@ -2013,9 +2057,32 @@ function buildHome(){
     const sbAll=btn('see-all-btn','전체보기 ›',()=>setState({showAllBest:true}));
     ap(sbHd,sbTitle,sbAll);
 
-    const best3Festivals = [...S.festivals]
-      .sort((a, b) => (b.cong || 0) - (a.cong || 0))
-      .slice(0, 3);
+    // ── 이번주 핫플 BEST3: 실제 주간 조회수 기반 (데이터 부족 시 혼잡도 순 유지)
+    const wv = (S._weeklyViews && S._weeklyViews.thisWeek) || {};
+    const lw = (S._weeklyViews && S._weeklyViews.lastWeek) || {};
+    const getViews = f => wv[f.id || f.title] || 0;
+    const totalViews = Object.values(wv).reduce((a,b)=>a+b, 0);
+    const enoughData = totalViews >= 10 && Object.keys(wv).length >= 3;
+
+    let best3Festivals, labelFor;
+    if(enoughData){
+      best3Festivals = [...S.festivals]
+        .sort((a, b) => getViews(b) - getViews(a))
+        .slice(0, 3);
+      // 급상승: 2·3위 중 지난주 대비 조회 증가가 가장 큰 축제
+      const growth = f => getViews(f) - (lw[f.id || f.title] || 0);
+      let riserIdx = -1, maxG = 0;
+      best3Festivals.forEach((f, i) => {
+        if(i > 0){ const g = growth(f); if(g > maxG){ maxG = g; riserIdx = i; } }
+      });
+      labelFor = i => i === 0 ? '🔥 이번주 1위' : (i === riserIdx ? '🔥 급상승' : '⭐ 추천');
+    } else {
+      best3Festivals = [...S.festivals]
+        .sort((a, b) => (b.cong || 0) - (a.cong || 0))
+        .slice(0, 3);
+      const fireLabels = ['🔥 이번주 1위', '🔥 급상승', '⭐ 추천'];
+      labelFor = i => fireLabels[i] || '🔥 인기';
+    }
     const best3List=div('best3-list');
     best3Festivals.forEach((f,i)=>{
       const card=div('best3-card');card.onclick=()=>openDetail(f);
@@ -2025,9 +2092,7 @@ function buildHome(){
       const ftitle=div('best3-title');setText(ftitle,f.title);
       const floc=div('best3-loc');setText(floc,`📍 ${f.loc}`);
       const meta=div('best3-meta');
-      // 동적 라벨: 1위는 '이번주 1위', 2위는 '급상승', 3위는 '추천'
-      const fireLabels = ['🔥 이번주 1위', '🔥 급상승', '⭐ 추천'];
-      const fire=div('best3-fire', fireLabels[i] || '🔥 인기');
+      const fire=div('best3-fire', labelFor(i));
       const rat=div('best3-rate');
       const rsi=icon('star');css(rsi,{width:'11px',height:'11px',stroke:'#f59e0b',fill:'#f59e0b'});
       ap(rat,rsi,`${f.rating || 4.5}`);
@@ -10068,6 +10133,28 @@ function festivalToFs(f, order){
 }
 
 // Firestore에서 축제 불러오기
+// ── 최근 14일 조회수 로드 → 이번주/지난주 집계 (핫플 BEST3용)
+async function loadWeeklyViews(){
+  try{
+    if(!db) return;
+    const fmt = (dt) => dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    const now = new Date();
+    const d14 = fmt(new Date(now.getTime() - 14*86400000));
+    const d7  = fmt(new Date(now.getTime() - 7*86400000));
+    const snap = await db.collection('festival_views').where('date','>=',d14).get();
+    const thisWeek = {}, lastWeek = {};
+    snap.forEach(doc => {
+      const v = doc.data();
+      const bucket = (v.date >= d7) ? thisWeek : lastWeek;
+      bucket[v.festId] = (bucket[v.festId] || 0) + (v.count || 0);
+    });
+    S._weeklyViews = { thisWeek, lastWeek };
+    console.log('[나들이go] 주간 조회수 로드: 이번주 ' + Object.keys(thisWeek).length + '개 축제');
+  }catch(e){
+    console.warn('[나들이go] 주간 조회수 로드 실패:', e.message);
+  }
+}
+
 async function loadFestivalsFromFirestore(){
   if(!db) return false;
   try{
@@ -10518,6 +10605,8 @@ function loadScriptOnce(src){
   if(fbOk){
     // 축제 데이터 로드
     await loadFestivalsFromFirestore();
+    // 주간 조회수 로드 (핫플 BEST3용, 백그라운드 — 완료되면 홈 갱신)
+    loadWeeklyViews().then(() => { if(S.tab === 'home' && !S.item) render(); });
     // 카테고리 로드
     await loadCategoriesFromFirestore();
     // 카테고리 실시간 구독 (관리자가 수정하면 즉시 반영)
