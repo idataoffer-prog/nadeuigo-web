@@ -715,7 +715,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716F';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260716G';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4079,8 +4079,16 @@ function buildDetail(){
   const nl=div('nearby-list');
 
   // 네이버 지도 좌표 기반 검색 URL 생성
-  // 네이버는 좌표 기반 검색이 가장 정확함
+  // 검색어에 지역명을 포함해야 모바일 네이버지도 앱에서도 해당 지역 결과가 나옴
   const buildMapUrl = (keyword) => {
+    // 주소(f.loc)에서 지역명 추출: "강원 강릉시 ..." → "강원 강릉시"
+    let regionName = '';
+    if(f.loc){
+      const parts = String(f.loc).trim().split(/\s+/);
+      regionName = parts.slice(0, 2).join(' ');
+    }
+    const fullKeyword = regionName ? regionName + ' ' + keyword : keyword;
+
     // 좌표 유효성 검사 (한국 좌표 범위)
     const lat = parseFloat(f.lat);
     const lng = parseFloat(f.lng);
@@ -4090,14 +4098,10 @@ function buildDetail(){
                           lng > 124 && lng < 132;
     
     if(hasValidCoords){
-      // 네이버 지도: 검색어 + 좌표 (가장 정확)
-      // 형식: https://map.naver.com/p/search/{검색어}?c={경도},{위도},15,0,0,0,dh
-      return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}?c=${lng},${lat},15,0,0,0,dh`;
-    } else if(f.loc){
-      // 좌표 없으면 지역명 + 키워드 검색
-      return `https://map.naver.com/p/search/${encodeURIComponent(f.loc + ' ' + keyword)}`;
+      // 네이버 지도: "지역명 + 검색어" + 좌표 (앱/웹 모두 해당 지역 결과)
+      return `https://map.naver.com/p/search/${encodeURIComponent(fullKeyword)}?c=${lng},${lat},15,0,0,0,dh`;
     } else {
-      return `https://map.naver.com/p/search/${encodeURIComponent(keyword)}`;
+      return `https://map.naver.com/p/search/${encodeURIComponent(fullKeyword)}`;
     }
   };
 
