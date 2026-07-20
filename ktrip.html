@@ -715,7 +715,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716G';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260716H';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4082,12 +4082,16 @@ function buildDetail(){
   // 검색어에 지역명을 포함해야 모바일 네이버지도 앱에서도 해당 지역 결과가 나옴
   const buildMapUrl = (keyword) => {
     // 주소(f.loc)에서 지역명 추출: "강원 강릉시 ..." → "강원 강릉시"
+    // loc이 비어있으면 region 필드("서울", "강원" 등)로 대체
     let regionName = '';
     if(f.loc){
       const parts = String(f.loc).trim().split(/\s+/);
       regionName = parts.slice(0, 2).join(' ');
+    } else if(f.region){
+      regionName = String(f.region).trim();
     }
     const fullKeyword = regionName ? regionName + ' ' + keyword : keyword;
+    console.log('[나들이go][진단] 네이버지도 검색어: "' + fullKeyword + '" | loc=' + (f.loc||'없음') + ' | region=' + (f.region||'없음') + ' | 좌표=' + f.lat + ',' + f.lng);
 
     // 좌표 유효성 검사 (한국 좌표 범위)
     const lat = parseFloat(f.lat);
