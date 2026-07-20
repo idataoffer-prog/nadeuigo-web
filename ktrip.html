@@ -6,6 +6,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 <title>나들이go</title>
+<script>
+/* ── 진단: 외부 리소스(스크립트/CSS) 로드 실패 시 URL과 함께 기록 */
+window.__loadErrors = [];
+window.addEventListener('error', function(e){
+  if(e.target && (e.target.src || e.target.href)){
+    var u = e.target.src || e.target.href;
+    window.__loadErrors.push(u);
+    console.warn('[나들이go][진단] 리소스 로드 실패: ' + u);
+  }
+}, true);
+console.log('[나들이go][진단] 페이지 URL: ' + location.href);
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -695,7 +707,7 @@ body{display:flex;align-items:center;justify-content:center;}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <!-- 카카오맵 SDK (장소검색 services 라이브러리 포함) -->
 <!-- ⚠️ YOUR_KAKAO_JS_KEY 를 본인의 카카오 JavaScript 키로 교체하세요 -->
-<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5d2ab5e5924a9cc895f2e40dd1238646&libraries=services&autoload=false"></script>
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=5d2ab5e5924a9cc895f2e40dd1238646&libraries=services&autoload=false"></script>
 </head>
 <body>
 <script>
@@ -703,7 +715,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260716B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260716E';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -10254,9 +10266,11 @@ const KAKAO_CATEGORIES = {
 };
 
 function initKakaoMap(){
-  return new Promise((resolve)=>{
-    if(typeof kakao === 'undefined' || !kakao.maps){
-      console.warn('[나들이go] 카카오맵 SDK 로드 안됨');
+  return new Promise(async (resolve)=>{
+    // SDK가 늦게 로드될 수 있으므로 최대 10초 대기
+    const ok = await waitForSdk(() => typeof kakao !== 'undefined' && kakao.maps, 10000);
+    if(!ok){
+      console.warn('[나들이go] 카카오맵 SDK 로드 안됨 (10초 대기 후에도 실패)');
       resolve(false); return;
     }
     kakao.maps.load(()=>{
@@ -10424,7 +10438,42 @@ async function injectNearbyToFestival(){
 // ═══════════════════════════════════════════════════════════════
 // 앱 시작: Firebase 로드 후 render
 // ═══════════════════════════════════════════════════════════════
+// SDK 스크립트가 네트워크에서 늦게 로드될 수 있으므로 최대 10초 대기
+function waitForSdk(check, timeoutMs){
+  return new Promise(resolve => {
+    if(check()){ resolve(true); return; }
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      if(check()){ clearInterval(timer); resolve(true); }
+      else if(Date.now() - t0 > timeoutMs){ clearInterval(timer); resolve(false); }
+    }, 300);
+  });
+}
+
+// 스크립트 동적 로드 (SDK 재시도용)
+function loadScriptOnce(src){
+  return new Promise(res => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => res(true);
+    s.onerror = () => { console.warn('[나들이go][진단] 재로드 실패: ' + src); res(false); };
+    document.head.appendChild(s);
+  });
+}
+
 (async function startApp(){
+  // Firebase SDK 로드될 때까지 대기 (느린 네트워크 대응)
+  let sdkReady = await waitForSdk(() => typeof firebase !== 'undefined', 8000);
+  if(!sdkReady){
+    // 1차 실패 → SDK 스크립트 동적 재로드 시도 (자가복구)
+    console.warn('[나들이go] Firebase SDK 1차 로드 실패 → 재로드 시도');
+    await loadScriptOnce('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+    await loadScriptOnce('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js');
+    await loadScriptOnce('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js');
+    await loadScriptOnce('https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js');
+    sdkReady = typeof firebase !== 'undefined';
+  }
+  if(!sdkReady) console.warn('[나들이go] Firebase SDK 재로드도 실패 → 하드코딩 데이터로 진행 | 실패목록: ' + (window.__loadErrors||[]).join(', '));
   const fbOk = initFirebase();
   if(fbOk){
     // 축제 데이터 로드
@@ -10658,18 +10707,9 @@ async function injectNearbyToFestival(){
     onLoginSuccess({uid:'id_'+id, name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
   }
 
-  // ── 앱 시작: 로그인 상태 확인
-  const savedUser = localStorage.getItem('nadeuigo_user');
-  if(savedUser){
-    try{
-      S.user = JSON.parse(savedUser);
-      render();
-    } catch(e){
-      buildLoginScreen();
-    }
-  } else {
-    buildLoginScreen();
-  }
+  // ── 앱 시작: 항상 로그인 화면부터 (자동 로그인 없음)
+  localStorage.removeItem('nadeuigo_user'); // 이전 세션 제거
+  buildLoginScreen();
 
   document.addEventListener('touchstart',e=>{
     const t=e.touches[0];
