@@ -743,7 +743,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720C';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -2011,7 +2011,8 @@ function buildHome(){
     ap(shlbl,sub1,sub2);
 
     const smallScroll=div('small-scroll hscroll');
-    [S.festivals[1],S.festivals[0],S.festivals[2]].forEach(f=>{
+    // 축제가 3개 미만이어도 안전하게: 있는 것만 표시
+    [S.festivals[1],S.festivals[0],S.festivals[2]].filter(Boolean).forEach(f=>{
       const card=div('small-card');card.onclick=()=>openDetail(f);
       const imgW=div('sc-img');
       const im=el('img','');im.src=f.img;im.alt=f.title;css(im,{width:'100%',height:'100%',objectFit:'cover'});
@@ -2025,7 +2026,7 @@ function buildHome(){
       ap(card,imgW,name,loc,rat);
       smallScroll.appendChild(card);
     });
-    ap(sec2,shlbl,smallScroll);
+    if(S.festivals.length > 0){ ap(sec2,shlbl,smallScroll); }
 
 
 
