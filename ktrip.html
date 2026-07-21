@@ -744,7 +744,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720J';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720K';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4208,9 +4208,24 @@ function buildDetail(){
   css(ic2,{padding:'20px 16px'});
   ic2.onclick=()=>openInfo('weather','날씨');
   const iv2=div('info-val');css(iv2,{fontSize:'20px',marginBottom:'5px'});
-  const sunIco=icon('sun');css(sunIco,{width:'20px',height:'20px',stroke:'#f59e0b',marginRight:'5px',verticalAlign:'middle'});
-  ap(iv2,sunIco,'18°');
-  const il2=div('info-lbl');css(il2,{fontSize:'11px'});setText(il2,'맑음');ap(ic2,iv2,il2);
+  const il2=div('info-lbl');css(il2,{fontSize:'11px'});
+  if(f._weather){
+    // 이미 불러온 실시간 날씨 사용
+    const wc = f._weather.current;
+    const emoSpan=document.createElement('span');
+    css(emoSpan,{marginRight:'5px',fontSize:'18px'});setText(emoSpan,wc.icon);
+    ap(iv2,emoSpan,String(wc.temp).replace('°C','°'));
+    setText(il2,wc.label);
+  } else {
+    // 로딩 표시 후 백그라운드로 실시간 날씨 로드 → 완료되면 갱신
+    const sunIco=icon('sun');css(sunIco,{width:'20px',height:'20px',stroke:'#f59e0b',marginRight:'5px',verticalAlign:'middle'});
+    ap(iv2,sunIco,'--°');
+    setText(il2,'로딩중');
+    fetchWeatherForFestival(f).then(ok=>{
+      if(ok && S.item === f && !S.sub) render();
+    });
+  }
+  ap(ic2,iv2,il2);
 
   ap(ig,ic1,ic2);
 
