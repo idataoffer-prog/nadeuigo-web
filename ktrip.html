@@ -744,7 +744,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720K';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720L';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -6960,20 +6960,26 @@ function buildSubInfo(){
     // 시간대별 패널
     const hourlyPanel=div('cong-data-card');
     const hHdr=div('cong-card-hdr');
-    ap(hHdr,div('cong-card-title','시간대별 기온'),div('cong-card-unit','(단위: °C)'));
+    ap(hHdr,div('cong-card-title','시간대별 기온·강수확률'),div('cong-card-unit','💧=강수확률'));
     const vChart=div('cong-v-chart');
-    const maxTemp=Math.max(...w.hourly.map(h=>h.temp));
+    const temps_=w.hourly.map(h=>h.temp);
+    const maxTemp=Math.max(...temps_), minTemp=Math.min(...temps_);
+    const span=Math.max(maxTemp-minTemp,1); // 온도가 다 같아도 0 나눗셈 방지
     w.hourly.forEach(h=>{
       const group=div(`cong-v-group${h.isNow?' active':''}`);
+      // 강수확률 (10% 이상일 때만 표시)
+      const rainLbl=div('');css(rainLbl,{fontSize:'9px',fontWeight:'700',color:h.rain>=50?'#2563eb':'#60a5fa',height:'13px',textAlign:'center'});
+      if(h.rain>=10) setText(rainLbl,'💧'+h.rain+'%');
       const rail=div('cong-v-rail');
       const fill=div('cong-v-fill');
-      css(fill,{height:`${Math.round(h.temp/maxTemp*100)}%`});
+      // 막대 높이 = 온도 (최저~최고 기준 상대적, 최소 25% 보장)
+      css(fill,{height:`${Math.round(25+(h.temp-minTemp)/span*75)}%`});
       if(h.isNow) css(fill,{background:'#3b82f6'});
-      else css(fill,{background:h.rain>50?'#60a5fa':'#93c5fd'});
+      else css(fill,{background:h.rain>=50?'#60a5fa':'#93c5fd'});
       rail.appendChild(fill);
       const lbl=div('cong-v-label');setText(lbl,h.t);
       const tmp=div('');css(tmp,{fontSize:'10px',fontWeight:'700',color:h.isNow?'#3b82f6':'#64748b'});setText(tmp,h.temp+'°');
-      ap(group,rail,tmp,lbl);
+      ap(group,rainLbl,rail,tmp,lbl);
       vChart.appendChild(group);
     });
     ap(hourlyPanel,hHdr,vChart);
@@ -6997,15 +7003,6 @@ function buildSubInfo(){
       weeklyPanel.appendChild(row);
     });
 
-    // 팁
-    const tip=div('cong-tip');
-    const tipIcon=div('cong-tip-icon','💡');
-    const tipContent=div('');
-    const tipTitle=div('cong-tip-title','오늘의 날씨 가이드');
-    const tipDesc=div('cong-tip-body',d.tip||'야외 활동에 적합한 날씨입니다.');
-    ap(tipContent,tipTitle,tipDesc);
-    ap(tip,tipIcon,tipContent);
-
     function switchWeatherTab(tab){
       if(tab==='hourly'){
         pill1.className='cong-tab-btn active';pill2.className='cong-tab-btn';
@@ -7016,7 +7013,7 @@ function buildSubInfo(){
       }
     }
 
-    ap(body,hero,statWrap,tabWrap,hourlyPanel,weeklyPanel,tip);
+    ap(body,hero,statWrap,tabWrap,hourlyPanel,weeklyPanel);
     switchWeatherTab('hourly');
   }
 
