@@ -244,6 +244,7 @@ body{display:flex;align-items:center;justify-content:center;}
 /* ── LIVE cards ── */
 .live-scroll{display:flex;overflow-x:auto;gap:14px;padding:0 20px 8px;scroll-snap-type:x mandatory;}
 .live-card{flex-shrink:0;width:72vw;max-width:320px;height:50vh;border-radius:20px;overflow:hidden;position:relative;cursor:pointer;scroll-snap-align:center;box-shadow:0 8px 24px rgba(0,0,0,.18);}
+.live-scroll.compact .live-card{width:46vw;max-width:200px;height:240px;border-radius:16px;scroll-snap-align:start;box-shadow:0 4px 14px rgba(0,0,0,.12);}
 .live-card img{width:100%;height:100%;object-fit:cover;display:block;}
 .live-ov{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.82) 0%,rgba(0,0,0,.1) 50%,transparent 100%);}
 .live-info{position:absolute;bottom:0;left:0;right:0;padding:18px 16px 20px;}
@@ -743,7 +744,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720G';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720J';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1927,11 +1928,17 @@ function buildHome(){
     const seeAll=btn('see-all-btn','전체보기 ›',()=>setState({showAllLive:true}));
     ap(sh1,st1,seeAll);
 
-    const liveScroll=div('live-scroll hscroll');
-    // 일반 축제 우선, 부족하면 공식 축제로 채움 (공식은 아래 전용 섹션이 따로 있으므로)
-    const _nonOfficial = S.festivals.filter(f => f.idata !== true);
-    const _officials = S.festivals.filter(f => f.idata === true);
-    _nonOfficial.concat(_officials).slice(0,6).forEach(f=>{
+    const liveScroll=div('live-scroll hscroll compact');
+    // 날짜 기준 정렬: ① 오늘 진행 중 ② 곧 시작(가까운 순) ③ 지난 축제(최근 종료 순)
+    const _today = new Date(); _today.setHours(0,0,0,0);
+    const _liveKey = f => {
+      const r = parseFestivalRange(f);
+      if(!r) return 9e15;
+      if(r.start <= _today && _today <= r.end) return (r.end - _today);          // 진행 중 (곧 끝나는 순)
+      if(r.start > _today) return 1e12 + (r.start - _today);                     // 예정 (가까운 순)
+      return 5e12 + (_today - r.end);                                            // 종료 (최근 순)
+    };
+    [...S.festivals].sort((a,b)=>_liveKey(a)-_liveKey(b)).slice(0,6).forEach(f=>{
       const isVestor = f.idata === true;
       const card=div('live-card' + (isVestor ? ' vestor-official' : ''));card.onclick=()=>openDetail(f);
       const im=el('img','');im.src=f.img;im.alt=f.title;
@@ -2748,22 +2755,60 @@ function buildMap(){
   return wrap;
 }
 
+// ── 축제 날짜 문자열 파싱: "09.19-09.21" / "2026.09.19 - 2026.09.21" / "09.19" 등
+function parseFestivalRange(f){
+  try{
+    if(!f || !f.date) return null;
+    const s = String(f.date).replace(/\s/g,'');
+    const parts = s.split(/[-~]/);
+    const nowYear = new Date().getFullYear();
+    const p1 = (str, fy) => {
+      const seg = str.match(/\d{1,4}/g);
+      if(!seg) return null;
+      if(seg.length >= 3 && seg[0].length === 4) return new Date(+seg[0], +seg[1]-1, +seg[2]);
+      if(seg.length >= 2) return new Date(fy, +seg[0]-1, +seg[1]);
+      return null;
+    };
+    const start = p1(parts[0], nowYear);
+    if(!start) return null;
+    let end = parts[1] ? p1(parts[1], start.getFullYear()) : start;
+    if(!end) end = start;
+    if(end < start) end = new Date(end.getFullYear()+1, end.getMonth(), end.getDate());
+    return {start, end};
+  }catch(e){ return null; }
+}
+
 function buildCalendar(){
   const wrap=div(S._back?'tab-content':'tab-content fade-in');
   const hdr=div('page-header');
   const row=div('header-row');
   const t=div('');css(t,{fontSize:'22px',fontWeight:'900'});setText(t,'축제 달력');
-  const sb=btn('icon-btn','',null);sb.appendChild(icon('search'));
-  ap(row,t,sb);ap(hdr,row);
+  ap(row,t);ap(hdr,row);
 
   const main=div('scroll-area');css(main,{paddingBottom:'100px'});
 
+  // 달력 상태 초기화 (현재 월)
+  const _now = new Date();
+  if(S.calYear == null){ S.calYear = _now.getFullYear(); S.calMonth = _now.getMonth(); }
+  if(S.calSel == null){ S.calSel = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate()).getTime(); }
+
+  // 축제별 날짜 범위 미리 계산
+  const ranges = S.festivals.map(f => ({ f, r: parseFestivalRange(f) })).filter(x => x.r);
+  const coversDay = (dt) => ranges.filter(x => x.r.start <= dt && dt <= x.r.end);
+
   const calWrap=div('');css(calWrap,{padding:'22px',borderBottom:'1px solid #f1f5f9',background:'#fff'});
   const chdr=div('');css(chdr,{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'22px'});
-  const ctitle=div('');css(ctitle,{fontSize:'19px',fontWeight:'900'});setText(ctitle,'2026년 4월');
+  const ctitle=div('');css(ctitle,{fontSize:'19px',fontWeight:'900'});
+  setText(ctitle, S.calYear + '년 ' + (S.calMonth+1) + '월');
   const cnav=div('');css(cnav,{display:'flex',gap:'14px'});
-  const cb1=btn('icon-btn','',null);cb1.appendChild(icon('chevLeft'));css(cb1,{color:'#94a3b8'});
-  const cb2=btn('icon-btn','',null);cb2.appendChild(icon('chevRight'));
+  const cb1=btn('icon-btn','',()=>{
+    let m=S.calMonth-1, y=S.calYear; if(m<0){m=11;y--;}
+    setState({calMonth:m, calYear:y});
+  });cb1.appendChild(icon('chevLeft'));css(cb1,{color:'#94a3b8'});
+  const cb2=btn('icon-btn','',()=>{
+    let m=S.calMonth+1, y=S.calYear; if(m>11){m=0;y++;}
+    setState({calMonth:m, calYear:y});
+  });cb2.appendChild(icon('chevRight'));
   ap(cnav,cb1,cb2);ap(chdr,ctitle,cnav);
 
   const grid=div('cal-grid');
@@ -2771,39 +2816,71 @@ function buildCalendar(){
     const cell=div('');css(cell,{fontWeight:'700',fontSize:'12px',color:i===0?'#ef4444':i===6?'#3b82f6':'#0f172a',textAlign:'center',padding:'4px 0'});
     setText(cell,d);grid.appendChild(cell);
   });
-  const days=[
-    {d:'29',g:1},{d:'30',g:1},{d:'31',g:1},
-    {d:'1'},{d:'2'},{d:'3'},
-    {d:'4',dot:'#f9a8d4',blue:1},{d:'5',dot:'#f9a8d4',red:1},
-    {d:'6',dot:'#f9a8d4'},{d:'7',dot:'#f9a8d4'},{d:'8',dot:'#f9a8d4'},
-    {d:'9'},{d:'10',today:1},
-    {d:'11',dot:'#fde68a',blue:1},{d:'12',dot:'#fde68a',red:1},
-    {d:'13'},{d:'14'},{d:'15'},{d:'16'},{d:'17'},{d:'18',blue:1}
-  ];
-  days.forEach(({d,g,dot,blue,red,today})=>{
-    const cell=div('cal-day');
-    const color=g?'#cbd5e1':blue?'#3b82f6':red?'#ef4444':'#374151';
-    if(today){const t=div('cal-today');setText(t,d);cell.appendChild(t);}
-    else{css(cell,{color});cell.appendChild(document.createTextNode(d));if(dot){const dt=div('cal-dot');css(dt,{background:dot});cell.appendChild(dt);}}
+
+  const firstDay = new Date(S.calYear, S.calMonth, 1).getDay(); // 0=일
+  const daysInMonth = new Date(S.calYear, S.calMonth+1, 0).getDate();
+  const todayMid = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate()).getTime();
+
+  // 앞쪽 빈칸 (지난달 날짜, 흐리게)
+  const prevDays = new Date(S.calYear, S.calMonth, 0).getDate();
+  for(let i=0;i<firstDay;i++){
+    const cell=div('cal-day');css(cell,{color:'#cbd5e1'});
+    cell.appendChild(document.createTextNode(String(prevDays-firstDay+1+i)));
     grid.appendChild(cell);
-  });
+  }
+  // 이번 달 날짜
+  for(let d=1; d<=daysInMonth; d++){
+    const dt = new Date(S.calYear, S.calMonth, d);
+    const dtMid = dt.getTime();
+    const fests = coversDay(dt);
+    const dow = dt.getDay();
+    const cell=div('cal-day');
+    css(cell,{cursor:'pointer',position:'relative'});
+    const isToday = dtMid === todayMid;
+    const isSel = dtMid === S.calSel;
+    if(isToday || isSel){
+      const tEl=div('cal-today');setText(tEl,String(d));
+      if(!isToday){ css(tEl,{background:'#fff7ed',color:'#ef8200',border:'1.5px solid #ef8200'}); }
+      cell.appendChild(tEl);
+    } else {
+      css(cell,{color: dow===0?'#ef4444': dow===6?'#3b82f6':'#374151'});
+      cell.appendChild(document.createTextNode(String(d)));
+    }
+    if(fests.length){
+      const dot=div('cal-dot');
+      css(dot,{background: fests.some(x=>x.f.idata===true) ? '#ef8200' : '#f9a8d4'});
+      cell.appendChild(dot);
+    }
+    cell.onclick=()=>setState({calSel: dtMid});
+    grid.appendChild(cell);
+  }
   ap(calWrap,chdr,grid);
 
+  // ── 선택한 날짜의 축제 목록
+  const selDate = new Date(S.calSel);
+  const selFests = coversDay(selDate).map(x=>x.f);
   const calBtm=div('');css(calBtm,{padding:'18px',background:'#f8fafc',minHeight:'240px'});
   const btitle=div('');css(btitle,{fontWeight:'800',color:'#0f172a',marginBottom:'14px',display:'flex',alignItems:'center',gap:'8px'});
-  const bdot=div('');css(bdot,{width:'8px',height:'8px',borderRadius:'50%',background:'#2563eb',flexShrink:'0'});
-  ap(btitle,bdot,'4월 10일 오픈 예정');
+  const bdot=div('');css(bdot,{width:'8px',height:'8px',borderRadius:'50%',background:'#ef8200',flexShrink:'0'});
+  ap(btitle,bdot,(selDate.getMonth()+1)+'월 '+selDate.getDate()+'일 진행 축제 '+(selFests.length? selFests.length+'개':''));
   calBtm.appendChild(btitle);
-  S.festivals.filter(f=>f.id===11).forEach(f=>{
-    const row=div('');css(row,{background:'#fff',borderRadius:'14px',padding:'12px',display:'flex',gap:'14px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #f1f5f9',cursor:'pointer',marginBottom:'10px'});
-    row.onclick=()=>openDetail(f);
-    const im=el('img','');im.src=f.img;im.alt=f.title;css(im,{width:'76px',height:'76px',borderRadius:'10px',objectFit:'cover',flexShrink:'0'});
-    const info=div('');css(info,{display:'flex',flexDirection:'column',justifyContent:'center'});
-    const tag=div('');css(tag,{fontSize:'10px',color:'#2563eb',fontWeight:'700',marginBottom:'4px'});setText(tag,f.tag);
-    const nm=div('');css(nm,{fontWeight:'700',fontSize:'13px'});setText(nm,f.title);
-    const lc=div('');css(lc,{fontSize:'11px',color:'#94a3b8',marginTop:'3px'});setText(lc,`${f.loc} · ${f.date}`);
-    ap(info,tag,nm,lc);ap(row,im,info);calBtm.appendChild(row);
-  });
+
+  if(!selFests.length){
+    const empty=div('');css(empty,{textAlign:'center',padding:'40px 0',color:'#94a3b8',fontSize:'13px'});
+    setText(empty,'이 날 진행하는 축제가 없어요');
+    calBtm.appendChild(empty);
+  } else {
+    selFests.forEach(f=>{
+      const row=div('');css(row,{background:'#fff',borderRadius:'14px',padding:'12px',display:'flex',gap:'14px',boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #f1f5f9',cursor:'pointer',marginBottom:'10px'});
+      row.onclick=()=>openDetail(f);
+      const im=el('img','');im.src=f.img;im.alt=f.title;css(im,{width:'76px',height:'76px',borderRadius:'10px',objectFit:'cover',flexShrink:'0'});
+      const info=div('');css(info,{display:'flex',flexDirection:'column',justifyContent:'center'});
+      const tag=div('');css(tag,{fontSize:'10px',color:'#ef8200',fontWeight:'700',marginBottom:'4px'});setText(tag,f.tag||'축제');
+      const nm=div('');css(nm,{fontWeight:'700',fontSize:'13px'});setText(nm,f.title);
+      const lc=div('');css(lc,{fontSize:'11px',color:'#94a3b8',marginTop:'3px'});setText(lc,`${f.loc} · ${f.date}`);
+      ap(info,tag,nm,lc);ap(row,im,info);calBtm.appendChild(row);
+    });
+  }
   ap(main,calWrap,calBtm);
   ap(wrap,hdr,main);
   return wrap;
@@ -4386,6 +4463,106 @@ function buildDetail(){
   return modal;
 }
 
+// ── 실시간 날씨: Open-Meteo API (무료, 키 불필요) — 축제 좌표 기준
+async function fetchWeatherForFestival(f){
+  try{
+    const lat = parseFloat(f.lat), lng = parseFloat(f.lng);
+    const la = (!isNaN(lat) && lat>33 && lat<43) ? lat : 37.5665;   // 좌표 없으면 서울
+    const lo = (!isNaN(lng) && lng>124 && lng<132) ? lng : 126.978;
+    const url = 'https://api.open-meteo.com/v1/forecast?latitude='+la+'&longitude='+lo
+      +'&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code,uv_index'
+      +'&hourly=temperature_2m,precipitation_probability'
+      +'&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+      +'&timezone=Asia%2FSeoul&forecast_days=7';
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const j = await res.json();
+
+    const wmo = code => {
+      if(code===0) return {icon:'☀️',label:'맑음'};
+      if(code<=2) return {icon:'🌤',label:'대체로 맑음'};
+      if(code===3) return {icon:'☁️',label:'흐림'};
+      if(code<=48) return {icon:'🌫',label:'안개'};
+      if(code<=57) return {icon:'🌦',label:'이슬비'};
+      if(code<=67) return {icon:'🌧',label:'비'};
+      if(code<=77) return {icon:'🌨',label:'눈'};
+      if(code<=82) return {icon:'🌧',label:'소나기'};
+      if(code<=86) return {icon:'🌨',label:'소낙눈'};
+      return {icon:'⛈',label:'뇌우'};
+    };
+    const cw = wmo(j.current.weather_code);
+    const uvVal = j.current.uv_index || 0;
+    const uvLabel = uvVal>=8?'매우 높음':uvVal>=6?'높음':uvVal>=3?'보통':'낮음';
+
+    // 미세먼지 (별도 API — 실패해도 무시)
+    let dust = '—';
+    try{
+      const aq = await fetch('https://air-quality-api.open-meteo.com/v1/air-quality?latitude='+la+'&longitude='+lo+'&current=pm10&timezone=Asia%2FSeoul').then(r=>r.json());
+      const pm = aq.current && aq.current.pm10;
+      if(pm != null) dust = pm<=30?'좋음':pm<=80?'보통':pm<=150?'나쁨':'매우 나쁨';
+    }catch(e){}
+
+    // 시간대별 (지금부터 2시간 간격 7개)
+    const now = new Date();
+    const times = j.hourly.time || [];
+    let startIdx = times.findIndex(t => {
+      const dt = new Date(t);
+      return dt.getDate() === now.getDate() && dt.getHours() === now.getHours();
+    });
+    if(startIdx < 0) startIdx = 0;
+    const hourly = [];
+    for(let k=0; k<7; k++){
+      const idx = startIdx + k*2;
+      if(idx >= times.length) break;
+      hourly.push({
+        t: new Date(times[idx]).getHours() + '시',
+        temp: Math.round(j.hourly.temperature_2m[idx]),
+        rain: (j.hourly.precipitation_probability && j.hourly.precipitation_probability[idx]) || 0,
+        isNow: k === 0
+      });
+    }
+
+    // 주간
+    const dayNames = ['일','월','화','수','목','금','토'];
+    const weekly = (j.daily.time || []).slice(0,7).map((t, idx) => ({
+      day: dayNames[new Date(t).getDay()],
+      icon: wmo(j.daily.weather_code[idx]).icon,
+      high: Math.round(j.daily.temperature_2m_max[idx]),
+      low: Math.round(j.daily.temperature_2m_min[idx]),
+      rain: (j.daily.precipitation_probability_max && j.daily.precipitation_probability_max[idx]) || 0
+    }));
+
+    // 상황별 팁
+    const maxRain = Math.max(0, ...hourly.map(h => h.rain || 0));
+    const curT = Math.round(j.current.temperature_2m);
+    let tip = '야외 활동하기 좋은 날씨예요.';
+    if(maxRain >= 60) tip = '비 소식이 있어요. 우산을 꼭 챙기세요!';
+    else if(maxRain >= 30) tip = '비가 올 수도 있어요. 접이식 우산을 챙기면 안심이에요.';
+    else if(curT >= 30) tip = '더운 날씨예요. 물과 모자를 챙기고 그늘에서 자주 쉬세요.';
+    else if(curT <= 5) tip = '쌀쌀해요. 따뜻한 겉옷을 챙기세요.';
+    else if(uvVal >= 6) tip = '자외선이 강해요. 선크림을 챙기세요.';
+
+    f._weather = {
+      summary: '오늘의 날씨',
+      current: {
+        icon: cw.icon, label: cw.label,
+        temp: curT + '°C',
+        feel: Math.round(j.current.apparent_temperature) + '°C',
+        humidity: Math.round(j.current.relative_humidity_2m) + '%',
+        dust: dust,
+        wind: Math.round((j.current.wind_speed_10m || 0) / 3.6) + 'm/s',
+        uv: uvLabel
+      },
+      hourly, weekly, tip
+    };
+    console.log('[나들이go] 날씨 로드 완료: ' + la.toFixed(2) + ',' + lo.toFixed(2) + ' ' + cw.label + ' ' + curT + '°C');
+    return true;
+  }catch(e){
+    console.warn('[나들이go] 날씨 로드 실패:', e.message);
+    return false;
+  }
+}
+
 function buildSubInfo(){
   const modal=div(S._back?'modal':'modal slide-right');css(modal,{zIndex:'70'});
   // 축제별 데이터(S.item) 우선 → 없으면 기본 INFO 사용
@@ -4454,6 +4631,32 @@ function buildSubInfo(){
       };
     }
   }
+  // 날씨 — 축제 좌표의 실시간 날씨 (Open-Meteo)
+  if(S.item && S.subData.id === 'weather'){
+    if(S.item._weather){
+      d = S.item._weather;
+    } else if(S._weatherFail){
+      d = {
+        summary: '오늘의 날씨',
+        current: {icon:'📡', label:'불러오기 실패', temp:'--°C', feel:'--°C', humidity:'--', dust:'--', wind:'--', uv:'--'},
+        hourly: [], weekly: [],
+        tip: '네트워크 연결을 확인한 뒤 화면을 다시 열어주세요.'
+      };
+      S._weatherFail = false; // 다음 진입 시 재시도
+    } else {
+      fetchWeatherForFestival(S.item).then(ok => {
+        S._weatherFail = !ok;
+        if(S.sub && S.subData && S.subData.id === 'weather') render();
+      });
+      d = {
+        summary: '오늘의 날씨',
+        current: {icon:'⏳', label:'불러오는 중', temp:'--°C', feel:'--°C', humidity:'--', dust:'--', wind:'--', uv:'--'},
+        hourly: [], weekly: [],
+        tip: '실시간 날씨를 불러오고 있어요...'
+      };
+    }
+  }
+
   // 주변 맛집/숙박/약국 — 카카오 지도 API로 자동 검색
   if(S.item && ['food','hotels','pharmacy'].includes(S.subData.id)){
     const key = S.subData.id;
