@@ -743,7 +743,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720E';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -2339,9 +2339,19 @@ function buildHome(){
       });
     }
 
-    // ── 지역 카드 생성
-    REGIONS.forEach(r=>{
-      const imgUrl=regionImgs[r.n]||regionImgs['서울'];
+    // ── 지역 카드 생성 (이모티콘 + 파스텔 배경)
+    const regionPalette = [
+      {bg:'#fff7ed', ring:'#fed7aa'}, // 주황
+      {bg:'#eff6ff', ring:'#bfdbfe'}, // 파랑
+      {bg:'#f0fdf4', ring:'#bbf7d0'}, // 초록
+      {bg:'#fdf4ff', ring:'#f5d0fe'}, // 보라
+      {bg:'#fffbeb', ring:'#fde68a'}, // 노랑
+      {bg:'#fef2f2', ring:'#fecaca'}, // 빨강
+      {bg:'#f0fdfa', ring:'#99f6e4'}, // 청록
+      {bg:'#f8fafc', ring:'#e2e8f0'}, // 회색
+    ];
+    REGIONS.forEach((r, ri)=>{
+      const pal = regionPalette[ri % regionPalette.length];
       const matchR=f=>{
         if(r.n==='내 주변') return true;
         const aliases=regionMap[r.n]||[r.n];
@@ -2354,37 +2364,31 @@ function buildHome(){
         borderRadius:'18px',overflow:'hidden',
         position:'relative',cursor:'pointer',
         height:'120px',
+        background:pal.bg,
+        border:`1.5px solid ${pal.ring}`,
         transition:'transform .15s ease,outline .15s ease',
       });
       card.onclick=()=>setState({selectedRegion:{n:r.n,em:r.em||'📍'}});
 
-      // 배경 이미지
-      const bg=div('');css(bg,{
-        position:'absolute',inset:'0',
-        background:`url(${imgUrl}) center/cover no-repeat`,
-      });
+      // 큰 이모티콘 (우상단, 살짝 크게)
+      const emo=div('');css(emo,{
+        position:'absolute',top:'14px',right:'14px',
+        fontSize:'34px',lineHeight:'1',
+      });setText(emo,r.em||'📍');
 
-      // 글래스 오버레이
-      const glass=div('rg-glass');css(glass,{
-        position:'absolute',inset:'0',
-        background:'rgba(0,0,0,.32)',
-        transition:'background .2s ease',
-      });
-
-      // 텍스트
+      // 텍스트 (좌하단, 어두운 글씨)
       const txt=div('');css(txt,{
         position:'absolute',bottom:'0',left:'0',right:'0',
         padding:'12px 14px',
-        background:'linear-gradient(to top,rgba(0,0,0,.65) 0%,transparent 100%)',
       });
-      const nm=div('');css(nm,{fontSize:'16px',fontWeight:'900',color:'#fff',
-        letterSpacing:'-.02em',lineHeight:'1.2',textShadow:'0 1px 6px rgba(0,0,0,.4)'});
+      const nm=div('');css(nm,{fontSize:'16px',fontWeight:'900',color:'#111',
+        letterSpacing:'-.02em',lineHeight:'1.2'});
       setText(nm,r.n);
-      const sub=div('');css(sub,{fontSize:'10px',color:'rgba(255,255,255,.65)',fontWeight:'500',marginTop:'1px'});
+      const sub=div('');css(sub,{fontSize:'10px',color:'#94a3b8',fontWeight:'600',marginTop:'2px'});
       setText(sub,cnt?`축제 ${cnt}개`:'탐색하기');
       ap(txt,nm,sub);
 
-      ap(card,bg,glass,txt);
+      ap(card,emo,txt);
       grid.appendChild(card);
     });
 
