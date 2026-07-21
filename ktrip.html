@@ -743,7 +743,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720F';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720G';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1928,7 +1928,10 @@ function buildHome(){
     ap(sh1,st1,seeAll);
 
     const liveScroll=div('live-scroll hscroll');
-    S.festivals.slice(0,3).forEach(f=>{
+    // 일반 축제 우선, 부족하면 공식 축제로 채움 (공식은 아래 전용 섹션이 따로 있으므로)
+    const _nonOfficial = S.festivals.filter(f => f.idata !== true);
+    const _officials = S.festivals.filter(f => f.idata === true);
+    _nonOfficial.concat(_officials).slice(0,6).forEach(f=>{
       const isVestor = f.idata === true;
       const card=div('live-card' + (isVestor ? ' vestor-official' : ''));card.onclick=()=>openDetail(f);
       const im=el('img','');im.src=f.img;im.alt=f.title;
@@ -2007,7 +2010,7 @@ function buildHome(){
     const sub1=div('');css(sub1,{fontSize:'11px',color:'#ef8200',fontWeight:'700',marginBottom:'3px'});setText(sub1,'인생샷 보장!');
     const sub2=div('section-title');
     const sparkIco=icon('spark');css(sparkIco,{width:'16px',height:'16px',stroke:'#f59e0b',marginRight:'5px'});
-    ap(sub2,sparkIco,'봄꽃 명소');
+    ap(sub2,sparkIco,'요즘 뜨는 명소');
     ap(shlbl,sub1,sub2);
 
     const smallScroll=div('small-scroll hscroll');
