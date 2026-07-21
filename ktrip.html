@@ -743,7 +743,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720E';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260720F';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -2410,36 +2410,46 @@ function buildHome(){
       gap:'12px',padding:'0 20px',
     });
 
-    THEMES.forEach(t=>{
+    // 테마 카드 (이모티콘 + 파스텔 배경 — 지역별과 동일 스타일)
+    const themePalette = [
+      {bg:'#fdf4ff', ring:'#f5d0fe'}, // 보라
+      {bg:'#fff7ed', ring:'#fed7aa'}, // 주황
+      {bg:'#f0fdfa', ring:'#99f6e4'}, // 청록
+      {bg:'#fef2f2', ring:'#fecaca'}, // 빨강
+      {bg:'#eff6ff', ring:'#bfdbfe'}, // 파랑
+      {bg:'#fffbeb', ring:'#fde68a'}, // 노랑
+      {bg:'#f0fdf4', ring:'#bbf7d0'}, // 초록
+      {bg:'#f8fafc', ring:'#e2e8f0'}, // 회색
+    ];
+    THEMES.forEach((t, ti)=>{
+      const pal = themePalette[ti % themePalette.length];
       const card=div('');css(card,{
         borderRadius:'18px',overflow:'hidden',
         position:'relative',cursor:'pointer',
         height:'120px',
+        background:pal.bg,
+        border:`1.5px solid ${pal.ring}`,
         transition:'transform .15s ease',
       });
       card.onclick=()=>setState({selectedTheme:{n:t.n,em:t.em,tags:t.tags,img:t.img}});
 
-      const bg=div('');css(bg,{
-        position:'absolute',inset:'0',
-        background:`url(${t.img}) center/cover no-repeat`,
-      });
-      const glass=div('');css(glass,{
-        position:'absolute',inset:'0',
-        background:'rgba(0,0,0,.32)',
-        transition:'background .2s ease',
-      });
+      // 큰 이모티콘 (우상단)
+      const emo=div('');css(emo,{
+        position:'absolute',top:'14px',right:'14px',
+        fontSize:'34px',lineHeight:'1',
+      });setText(emo,t.em||'✦');
+
+      // 테마명 (좌하단, 어두운 글씨)
       const txt=div('');css(txt,{
         position:'absolute',bottom:'0',left:'0',right:'0',
         padding:'12px 14px',
-        background:'linear-gradient(to top,rgba(0,0,0,.65) 0%,transparent 100%)',
       });
       const nm=div('');css(nm,{
-        fontSize:'16px',fontWeight:'900',color:'#fff',
+        fontSize:'16px',fontWeight:'900',color:'#111',
         letterSpacing:'-.02em',lineHeight:'1.2',
-        textShadow:'0 1px 6px rgba(0,0,0,.4)',
-        display:'flex',alignItems:'center',gap:'6px',
-      });setText(nm,(t.em||'✦')+' '+t.n);
-      txt.appendChild(nm);ap(card,bg,glass,txt);
+      });setText(nm,t.n);
+      txt.appendChild(nm);
+      ap(card,emo,txt);
       grid.appendChild(card);
     });
 
