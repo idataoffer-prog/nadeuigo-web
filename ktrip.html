@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260720O';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260721B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -3795,10 +3795,12 @@ function buildMy(){
 
   const stats=div('stats-row');
 
-  // 실제 데이터 연동
-  const myTicketCount=2; // TODO: 실제 티켓 데이터
+  // 실제 데이터 연동 (신규 사용자는 전부 0에서 시작)
+  let _myTickets=[]; try{ _myTickets=JSON.parse(localStorage.getItem('nadeuigo_tickets')||'[]'); }catch(e){}
+  let _myCoupons=[]; try{ _myCoupons=JSON.parse(localStorage.getItem('nadeuigo_coupons')||'[]'); }catch(e){}
+  const myTicketCount=_myTickets.filter(t=>!t.used).length;
   const myCouponCount=Object.keys(S.couponUsed||{}).length;
-  const unusedCouponCount=(INFO?.coupon?.items||[]).filter(c=>!S.couponUsed?.[c.id]).length;
+  const unusedCouponCount=_myCoupons.filter(c=>!S.couponUsed?.[c.id]).length;
   const myStampCount=S.dnaHistory?.length||0;
 
   [{ic:'ticket',lbl:'내 티켓',val:myTicketCount+'장',bg:'#eff6ff',sc:'#2563eb',action:'ticket'},
@@ -4449,7 +4451,7 @@ function buildDetail(){
   const cta=div('cta-bar');
   const ctaM=btn('cta-main','예매하기');
 
-  // 동행 구하기 버튼
+  // 동행 구하기 버튼 (전체 폭)
   const mateCount=festMates.length;
   const ctaMate=btn('',`🤝 동행 구하기`,()=>{
     setState({tab:'chat',item:null,sub:null,chatTab:'동행',
@@ -4459,23 +4461,11 @@ function buildDetail(){
       mateFestFilter:mateCount>0?f.title.slice(0,4):'전체'
     });
   });
-  css(ctaMate,{flex:'1',height:'56px',borderRadius:'14px',border:'none',
+  css(ctaMate,{flex:'1',height:'58px',borderRadius:'14px',border:'none',
     background:'#ef8200',color:'#fff',
-    fontSize:'15px',fontWeight:'800',cursor:'pointer',whiteSpace:'nowrap'});
+    fontSize:'18px',fontWeight:'800',cursor:'pointer',whiteSpace:'nowrap'});
 
-  // 카풀 버튼
-  const ctaCarpool=btn('','🚗 카풀',()=>{
-    setState({tab:'chat',item:null,sub:null,chatTab:'카풀',
-      mateView:'write',writeStep:0,
-      writeData:{festivalId:f.id,festName:f.title,festDate:f.date,type:'카풀'},
-    });
-  });
-  css(ctaCarpool,{flex:'1',height:'56px',borderRadius:'14px',border:'none',
-    background:'#FFD6D2',color:'#c0392b',
-    fontSize:'15px',fontWeight:'800',cursor:'pointer',whiteSpace:'nowrap',
-    marginLeft:'8px'});
-
-  ap(cta,ctaMate,ctaCarpool);
+  ap(cta,ctaMate);
 
   ap(modal,hdr,body,cta);
   return modal;
@@ -7440,11 +7430,9 @@ function buildMyTicketsPage(){
 
   // ── 내 티켓
   if(mode==='ticket'){
-    const allTickets=[
-      {id:'t1',fest:'서울 벚꽃축제',date:'2026.04.05',entry:'14:00 입장',seat:'일반 입장권',qty:2,used:false,color:'#3b82f6',img:'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=300&q=70'},
-      {id:'t2',fest:'안동 탈춤축제',date:'2026.09.27',entry:'10:00 입장',seat:'VIP 패키지',qty:1,used:false,color:'#7c3aed',img:'https://images.unsplash.com/photo-1540959733332-e94e1b3f1081?w=300&q=70'},
-      {id:'t3',fest:'보령 머드축제',date:'2026.07.20',entry:'10:00 입장',seat:'1일 자유이용권',qty:2,used:true,color:'#94a3b8',img:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&q=70'},
-    ];
+    // 사용자가 실제로 보유한 티켓만 표시 (신규 사용자는 빈 목록)
+    let allTickets=[];
+    try{ allTickets=JSON.parse(localStorage.getItem('nadeuigo_tickets')||'[]'); }catch(e){}
 
     // 탭
     let ticketTab='unused';
@@ -7733,7 +7721,9 @@ function buildMyTicketsPage(){
 
   // ── 쿠폰함 (INFO.coupon 연동)
   else if(mode==='coupon'){
-    const couponData=INFO?.coupon?.items||[];
+    // 사용자가 실제로 받은 쿠폰만 표시 (신규 사용자는 빈 목록)
+    let couponData=[];
+    try{ couponData=JSON.parse(localStorage.getItem('nadeuigo_coupons')||'[]'); }catch(e){}
     let curTab='unused';
     const tabs={};
 
@@ -11100,25 +11090,61 @@ function loadScriptOnce(src){
     */
   }
 
-  // ── 이메일 로그인
-  // TODO: Firebase Authentication → 이메일/비밀번호 활성화 필요
-  function loginWithId(id, pw, errMsg){
+  // ── 비밀번호 해시 (SHA-256)
+  async function _pwHash(id, pw){
+    try{
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(id + ':' + pw + ':nadeuigo'));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+    }catch(e){ return 'x_' + id + '_' + pw.length; }
+  }
+
+  // ── 이메일 로그인: Firestore 회원DB(app_users) 대조
+  async function loginWithId(id, pw, errMsg){
     if(!id || !pw){ showAuthError(errMsg,'아이디와 비밀번호를 입력해주세요'); return; }
     if(pw.length < 6){ showAuthError(errMsg,'비밀번호는 6자 이상이어야 해요'); return; }
-    const name = id;
-    onLoginSuccess({uid:'id_'+id, name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
+    showAuthError(errMsg,'확인 중...');
+    await waitForSdk(() => typeof db !== 'undefined' && db, 5000);
+    if(!db){ showAuthError(errMsg,'네트워크 연결을 확인해주세요'); return; }
+    try{
+      const doc = await db.collection('app_users').doc(id).get();
+      if(!doc.exists){ showAuthError(errMsg,'등록되지 않은 아이디예요. 회원가입을 먼저 해주세요'); return; }
+      const u = doc.data();
+      const hash = await _pwHash(id, pw);
+      if(u.pw !== hash){ showAuthError(errMsg,'비밀번호가 일치하지 않아요'); return; }
+      onLoginSuccess({uid:'id_'+id, name:u.name || id, email:id+'@nadeuigo.com', photo:null, provider:'id'});
+    }catch(e){
+      console.warn('[나들이go] 로그인 오류:', e.message);
+      showAuthError(errMsg,'로그인 중 오류가 났어요. 잠시 후 다시 시도해주세요');
+    }
   }
 
-  function signupWithId(name, id, pw, errMsg){
+  async function signupWithId(name, id, pw, errMsg){
     if(!name){ showAuthError(errMsg,'닉네임을 입력해주세요'); return; }
     if(!id){ showAuthError(errMsg,'아이디를 입력해주세요'); return; }
+    if(!/^[a-zA-Z0-9_]{3,20}$/.test(id)){ showAuthError(errMsg,'아이디는 영문·숫자 3~20자로 입력해주세요'); return; }
     if(pw.length < 6){ showAuthError(errMsg,'비밀번호는 6자 이상이어야 해요'); return; }
-    onLoginSuccess({uid:'id_'+id, name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
+    showAuthError(errMsg,'가입 중...');
+    await waitForSdk(() => typeof db !== 'undefined' && db, 5000);
+    if(!db){ showAuthError(errMsg,'네트워크 연결을 확인해주세요'); return; }
+    try{
+      const ref = db.collection('app_users').doc(id);
+      const doc = await ref.get();
+      if(doc.exists){ showAuthError(errMsg,'이미 사용 중인 아이디예요'); return; }
+      const hash = await _pwHash(id, pw);
+      await ref.set({ id: id, name: name, pw: hash, createdAt: new Date().toISOString() });
+      onLoginSuccess({uid:'id_'+id, name: name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
+    }catch(e){
+      console.warn('[나들이go] 가입 오류:', e.message);
+      showAuthError(errMsg,'가입 중 오류가 났어요. 잠시 후 다시 시도해주세요');
+    }
   }
 
-  // ── 앱 시작: 항상 로그인 화면부터 (자동 로그인 없음)
-  localStorage.removeItem('nadeuigo_user'); // 이전 세션 제거
-  buildLoginScreen();
+  // ── 앱 시작: 저장된 로그인이 있으면 유지, 없으면(신규 사용자) 로그인 화면 먼저
+  try{
+    const savedUser = localStorage.getItem('nadeuigo_user');
+    if(savedUser){ S.user = JSON.parse(savedUser); }
+  }catch(e){ S.user = null; }
+  if(!S.user) buildLoginScreen();
 
   document.addEventListener('touchstart',e=>{
     const t=e.touches[0];
