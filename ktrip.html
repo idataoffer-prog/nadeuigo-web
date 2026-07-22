@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260721B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260721D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -3768,20 +3768,48 @@ function buildMy(){
   const wrap=div(S._back?'tab-content':'tab-content fade-in');
   const hdr=div('page-header');
   const row=div('header-row');
-  const t=div('');css(t,{fontSize:'22px',fontWeight:'900'});setText(t,'마이페이지');
+  const t=div('');css(t,{fontSize:'22px',fontWeight:'900'});setText(t,'마이고');
   const sb=btn('icon-btn','',()=>setState({showSettings:true}));sb.appendChild(icon('settings'));
   ap(row,t,sb);ap(hdr,row);
 
   const main=div('scroll-area');css(main,{background:'#f2f3f5',paddingBottom:'160px'});
 
-  // ── 프로필 카드
+  // ── 프로필 카드 (비로그인 시 로그인 유도 배너 — 쿠팡 스타일)
+  if(!S.user){
+    const loginCard=div('');
+    css(loginCard,{background:'#fff',padding:'26px 20px',borderBottom:'8px solid #f2f3f5'});
+    const lcBtn=div('');
+    css(lcBtn,{display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer'});
+    lcBtn.onclick=()=>{ if(window.showLoginScreen) window.showLoginScreen(); };
+    const lcLeft=div('');
+    const lcTitle=div('');css(lcTitle,{fontSize:'18px',fontWeight:'900',color:'#0f172a',marginBottom:'4px'});
+    setText(lcTitle,'로그인해 주세요');
+    const lcSub=div('');css(lcSub,{fontSize:'12px',color:'#94a3b8'});
+    setText(lcSub,'티켓·쿠폰·스탬프를 이용하려면 로그인이 필요해요');
+    ap(lcLeft,lcTitle,lcSub);
+    const lcArrow=div('');css(lcArrow,{fontSize:'20px',color:'#cbd5e1',fontWeight:'700'});setText(lcArrow,'›');
+    ap(lcBtn,lcLeft,lcArrow);
+    const lcCta=btn('','로그인 · 회원가입',()=>{ if(window.showLoginScreen) window.showLoginScreen(); });
+    css(lcCta,{width:'100%',marginTop:'16px',padding:'14px',borderRadius:'12px',border:'none',
+      background:'#ef8200',color:'#fff',fontSize:'15px',fontWeight:'800',cursor:'pointer'});
+    ap(loginCard,lcBtn,lcCta);
+    main.appendChild(loginCard);
+  }
+
+  // ── 프로필 카드 (로그인 상태)
   const latestDna=S.dnaHistory?.[0];
   const profile=div('');
   css(profile,{background:'#fff',padding:'22px 20px',borderBottom:'8px solid #f2f3f5'});
   const profileRow=div('');css(profileRow,{display:'flex',alignItems:'center',gap:'16px',marginBottom:'16px'});
-  const av=div('avatar','K');
+  const _uname = (S.user && S.user.name) || '여행자';
+  const av=div('avatar', _uname.charAt(0).toUpperCase());
   const pinfo=div('');css(pinfo,{flex:'1'});
-  const pname=div('');css(pname,{fontSize:'19px',fontWeight:'900',color:'#0f172a',marginBottom:'4px'});setText(pname,'여행자K님');
+  const pname=div('');css(pname,{fontSize:'19px',fontWeight:'900',color:'#0f172a',marginBottom:'4px'});setText(pname,_uname+'님');
+  // 한 줄 소개 (프로필 수정에서 입력)
+  let pbio=null;
+  if(S.user && S.user.bio){
+    pbio=div('');css(pbio,{fontSize:'12px',color:'#64748b',marginBottom:'4px'});setText(pbio,S.user.bio);
+  }
   const dnaBadgeEl=div('');
   if(latestDna){
     css(dnaBadgeEl,{fontSize:'12px',fontWeight:'700',background:'#fff8f3',color:'#FF7E36',
@@ -3791,7 +3819,8 @@ function buildMy(){
     css(dnaBadgeEl,{fontSize:'12px',color:'#868b94'});
     setText(dnaBadgeEl,'아직 타로점을 보지 않았어요');
   }
-  ap(pinfo,pname,dnaBadgeEl);ap(profileRow,av,pinfo);
+  if(pbio) ap(pinfo,pname,pbio,dnaBadgeEl); else ap(pinfo,pname,dnaBadgeEl);
+  ap(profileRow,av,pinfo);
 
   const stats=div('stats-row');
 
@@ -3967,7 +3996,7 @@ function buildMy(){
     ap(cell,num,lbl2);actSec.appendChild(cell);
   });
 
-  ap(main,profile,actSec,dnaSec);
+  if(S.user) ap(main,profile,actSec,dnaSec); else ap(main,actSec,dnaSec);
 
   // ── 히스토리 섹션 (최신 1개 제외 나머지)
   if(S.dnaHistory?.length>1){
@@ -4002,7 +4031,7 @@ function buildMy(){
 function buildNav(){
   const nav=div('bottom-nav');
   const inner=div('nav-inner');
-  [{id:'home',ico:'home',lbl:'홈'},{id:'map',ico:'map',lbl:'지도'},{id:'calendar',ico:'calendar',lbl:'일정'},{id:'chat',ico:'chat',lbl:'채팅'},{id:'my',ico:'user',lbl:'마이'}].forEach(t=>{
+  [{id:'home',ico:'home',lbl:'홈'},{id:'map',ico:'map',lbl:'지도'},{id:'calendar',ico:'calendar',lbl:'일정'},{id:'chat',ico:'chat',lbl:'채팅'},{id:'my',ico:'user',lbl:'마이고'}].forEach(t=>{
     const b=btn(`nav-btn${S.tab===t.id?' active':''}`, '',()=>setState({tab:t.id,item:null,sub:null}));
     b.appendChild(icon(t.ico));
     const lbl=el('span','nav-label');setText(lbl,t.lbl);
@@ -8113,9 +8142,24 @@ function buildSettingsPage(){
 
   const accItems=[
     {lbl:'프로필 수정', action:()=>showInputModal('프로필 수정',[
-      {key:'name',label:'닉네임',placeholder:'닉네임 입력',value:'여행자K'},
-      {key:'bio', label:'한 줄 소개',placeholder:'소개를 입력해 주세요',value:''},
+      {key:'name',label:'닉네임',placeholder:'닉네임 입력',value:(S.user&&S.user.name)||''},
+      {key:'bio', label:'한 줄 소개',placeholder:'소개를 입력해 주세요',value:(S.user&&S.user.bio)||''},
     ],vals=>{
+      // 실제 저장: S.user + localStorage + Firestore 회원DB
+      if(!vals.name){ vals.name = (S.user&&S.user.name)||'여행자'; }
+      if(S.user){
+        S.user.name = vals.name;
+        S.user.bio = vals.bio || '';
+        try{ localStorage.setItem('nadeuigo_user', JSON.stringify(S.user)); }catch(e){}
+        // Firestore 회원DB에도 반영 (아이디 가입 회원)
+        try{
+          if(db && S.user.provider === 'id'){
+            const uid = String(S.user.uid||'').replace(/^id_/,'');
+            if(uid) db.collection('app_users').doc(uid).set({name: vals.name, bio: vals.bio||''}, {merge:true}).catch(()=>{});
+          }
+        }catch(e){}
+      }
+      render(); // 마이페이지 즉시 갱신
       const toast=div('');css(toast,{position:'fixed',bottom:'100px',left:'50%',
         transform:'translateX(-50%)',background:'rgba(0,0,0,.75)',color:'#fff',
         padding:'10px 20px',borderRadius:'9999px',fontSize:'13px',fontWeight:'700',zIndex:'300'});
@@ -10979,6 +11023,13 @@ function loadScriptOnce(src){
       'font-family:-apple-system,BlinkMacSystemFont,sans-serif',
     ].join(';');
 
+    // 닫기 버튼 (로그인 없이 둘러보기 계속)
+    const closeBtn = document.createElement('div');
+    closeBtn.textContent = '✕';
+    closeBtn.style.cssText = 'position:absolute;top:18px;left:20px;font-size:22px;color:#94a3b8;cursor:pointer;padding:6px;';
+    closeBtn.onclick = () => screen.remove();
+    screen.appendChild(closeBtn);
+
     // 로고
     const logo = document.createElement('div');
     logo.style.cssText = 'font-size:28px;font-weight:900;color:#ef8200;letter-spacing:-.03em;margin-bottom:6px;';
@@ -11038,7 +11089,7 @@ function loadScriptOnce(src){
     screen.insertBefore(nameInp, idInp);
     loginBtn.textContent = '회원가입';
     loginBtn.onclick = () => signupWithId(nameInp.value.trim(), idInp.value.trim(), pwInp.value, errMsg);
-    signupRow.innerHTML = `이미 계정이 있으신가요? <span style="color:#ef8200;font-weight:700;cursor:pointer;" onclick="location.reload()">로그인</span>`;
+    signupRow.innerHTML = `이미 계정이 있으신가요? <span style="color:#ef8200;font-weight:700;cursor:pointer;" onclick="document.getElementById('login-screen').remove();window.showLoginScreen&&window.showLoginScreen()">로그인</span>`;
   }
 
   // ── 로그인 성공 처리
@@ -11078,17 +11129,42 @@ function loadScriptOnce(src){
   }
 
   // ── 구글 로그인
-  // TODO: Firebase 콘솔 → Authentication → Google 활성화 필요
   function loginWithGoogle(){
-    alert('구글 로그인은 Firebase 설정 후 사용 가능합니다.\n\n설정 방법:\n1. console.firebase.google.com 접속\n2. 프로젝트 생성 → Authentication 활성화\n3. 로그인 제공업체 → Google 활성화\n4. 상단 FIREBASE_CONFIG에 config 입력');
-    /* 실제 구현:
-    const provider = new firebase.auth.GoogleAuthProvider();
-    firebase.auth().signInWithPopup(provider).then(result=>{
-      const u = result.user;
-      onLoginSuccess({uid:u.uid, name:u.displayName, email:u.email, photo:u.photoURL, provider:'google'});
-    }).catch(err=>console.error(err));
-    */
+    // 앱(WebView)에서는 네이티브 구글 로그인 사용 (WebView 내 구글 OAuth는 구글이 차단함)
+    if(window.ReactNativeWebView){
+      window.ReactNativeWebView.postMessage(JSON.stringify({type:'google-login'}));
+      return;
+    }
+    // 브라우저에서는 Firebase 팝업 로그인
+    try{
+      if(typeof firebase === 'undefined' || !firebase.auth){ alert('잠시 후 다시 시도해주세요'); return; }
+      const provider = new firebase.auth.GoogleAuthProvider();
+      firebase.auth().signInWithPopup(provider).then(result=>{
+        const u = result.user;
+        onLoginSuccess({uid:'g_'+u.uid, name:u.displayName||'사용자', email:u.email||'', photo:u.photoURL||null, provider:'google'});
+      }).catch(err=>{
+        console.warn('[나들이go] 구글 로그인 실패:', err.code, err.message);
+        if(err.code === 'auth/operation-not-allowed'){
+          alert('구글 로그인이 아직 활성화되지 않았어요.\n(Firebase 콘솔 → Authentication → Google 사용 설정 필요)');
+        } else if(err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request'){
+          alert('구글 로그인에 실패했어요. 잠시 후 다시 시도해주세요');
+        }
+      });
+    }catch(e){ alert('구글 로그인을 사용할 수 없어요'); }
   }
+
+  // 앱(네이티브)에서 구글 로그인 성공 시 호출됨
+  window.onNativeGoogleLogin = function(u){
+    try{
+      onLoginSuccess({
+        uid: 'g_' + (u.sub || u.id || Date.now()),
+        name: u.name || '사용자',
+        email: u.email || '',
+        photo: u.picture || null,
+        provider: 'google'
+      });
+    }catch(e){ console.warn('[나들이go] 구글 로그인 처리 오류:', e.message); }
+  };
 
   // ── 비밀번호 해시 (SHA-256)
   async function _pwHash(id, pw){
@@ -11139,12 +11215,13 @@ function loadScriptOnce(src){
     }
   }
 
-  // ── 앱 시작: 저장된 로그인이 있으면 유지, 없으면(신규 사용자) 로그인 화면 먼저
+  // ── 앱 시작: 로그인 없이 바로 둘러보기 가능 (쿠팡 스타일)
+  // 저장된 로그인이 있으면 복원, 없으면 게스트로 홈 진입 (로그인은 마이고 탭에서)
   try{
     const savedUser = localStorage.getItem('nadeuigo_user');
     if(savedUser){ S.user = JSON.parse(savedUser); }
   }catch(e){ S.user = null; }
-  if(!S.user) buildLoginScreen();
+  window.showLoginScreen = buildLoginScreen; // 마이고 탭에서 호출용
 
   document.addEventListener('touchstart',e=>{
     const t=e.touches[0];
