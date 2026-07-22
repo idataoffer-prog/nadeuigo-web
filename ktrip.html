@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260721D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260721F';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -831,12 +831,7 @@ let S={
   tab:'home',cat:'추천',mapFilter:'전체',chatTab:'동행',
   item:null,sub:null,subData:{title:'',content:''},
   showSearch:false,searchQuery:'',searchHistory:[],
-  congTab:'realtime',rating:5,showNotif:false,showDna:false,dnaStep:0,dnaAnswers:[],dnaHistory:[{
-    id:1,date:'2026.03.25',typeKey:'A',badge:'벚꽃 낭만형',emoji:'🌸',
-    title:'벚꽃 낭만형',
-    answers:[0,1,0,0,1,0,1,2],
-    matched:[{id:10,title:'서울 벚꽃축제',loc:'서울 여의도'},{id:11,title:'진해 군항제',loc:'경남 창원시'},{id:13,title:'안동 탈춤축제',loc:'경북 안동시'}],
-  }],
+  congTab:'realtime',rating:5,showNotif:false,showDna:false,dnaStep:0,dnaAnswers:[],dnaHistory:[],
   showAllLive:false,showAllBest:false,selectedRegion:null,selectedTheme:null,likedFests:[],showLiked:false,showMyReviews:false,showNotice:false,showFaq:false,showSettings:false,showMyTickets:null,
   couponTab:'unused',       // 'unused' | 'used'
   couponUsed:{},            // { couponId: { usedAt, confirmCode } }
@@ -1549,6 +1544,8 @@ function setState(p, _opts={}){
   _saveScroll();
   const prev=JSON.stringify(_stateSnapshot());
   Object.assign(S,p);
+  // 누적 데이터(스탬프·쿠폰사용·찜)를 계정별로 저장
+  saveUserData();
   const next=JSON.stringify(_stateSnapshot());
   // 의미 있는 내비게이션이면 pushState
   if(!_opts._pop && !_opts._replace && prev!==next){
@@ -1562,6 +1559,34 @@ function setState(p, _opts={}){
     S._backFromLeft=false;
     _restoreScroll();
   });
+}
+
+// ─── 계정별 사용자 데이터 (티켓·쿠폰·스탬프 등 누적 저장) ─────────────
+function userDataKey(base){
+  return base + '_' + (S.user && S.user.uid ? S.user.uid : 'guest');
+}
+function saveUserData(){
+  try{
+    localStorage.setItem(userDataKey('nadeuigo_udata'), JSON.stringify({
+      dnaHistory: S.dnaHistory || [],
+      couponUsed: S.couponUsed || {},
+      likedFests: S.likedFests || []
+    }));
+  }catch(e){}
+}
+function loadUserData(){
+  try{
+    const raw = localStorage.getItem(userDataKey('nadeuigo_udata'));
+    if(raw){
+      const d = JSON.parse(raw);
+      S.dnaHistory = d.dnaHistory || [];
+      S.couponUsed = d.couponUsed || {};
+      S.likedFests = d.likedFests || [];
+    } else {
+      // 이 계정으로는 처음 → 전부 0에서 시작
+      S.dnaHistory = []; S.couponUsed = {}; S.likedFests = [];
+    }
+  }catch(e){ S.dnaHistory = []; S.couponUsed = {}; S.likedFests = []; }
 }
 
 // 직렬화할 상태 키 (함수·DOM 제외)
@@ -3825,8 +3850,8 @@ function buildMy(){
   const stats=div('stats-row');
 
   // 실제 데이터 연동 (신규 사용자는 전부 0에서 시작)
-  let _myTickets=[]; try{ _myTickets=JSON.parse(localStorage.getItem('nadeuigo_tickets')||'[]'); }catch(e){}
-  let _myCoupons=[]; try{ _myCoupons=JSON.parse(localStorage.getItem('nadeuigo_coupons')||'[]'); }catch(e){}
+  let _myTickets=[]; try{ _myTickets=JSON.parse(localStorage.getItem(userDataKey('nadeuigo_tickets'))||'[]'); }catch(e){}
+  let _myCoupons=[]; try{ _myCoupons=JSON.parse(localStorage.getItem(userDataKey('nadeuigo_coupons'))||'[]'); }catch(e){}
   const myTicketCount=_myTickets.filter(t=>!t.used).length;
   const myCouponCount=Object.keys(S.couponUsed||{}).length;
   const unusedCouponCount=_myCoupons.filter(c=>!S.couponUsed?.[c.id]).length;
@@ -7461,7 +7486,7 @@ function buildMyTicketsPage(){
   if(mode==='ticket'){
     // 사용자가 실제로 보유한 티켓만 표시 (신규 사용자는 빈 목록)
     let allTickets=[];
-    try{ allTickets=JSON.parse(localStorage.getItem('nadeuigo_tickets')||'[]'); }catch(e){}
+    try{ allTickets=JSON.parse(localStorage.getItem(userDataKey('nadeuigo_tickets'))||'[]'); }catch(e){}
 
     // 탭
     let ticketTab='unused';
@@ -7752,7 +7777,7 @@ function buildMyTicketsPage(){
   else if(mode==='coupon'){
     // 사용자가 실제로 받은 쿠폰만 표시 (신규 사용자는 빈 목록)
     let couponData=[];
-    try{ couponData=JSON.parse(localStorage.getItem('nadeuigo_coupons')||'[]'); }catch(e){}
+    try{ couponData=JSON.parse(localStorage.getItem(userDataKey('nadeuigo_coupons'))||'[]'); }catch(e){}
     let curTab='unused';
     const tabs={};
 
@@ -8218,7 +8243,7 @@ function buildSettingsPage(){
     const confirm=btn('','로그아웃',()=>{
       overlay.remove();
       S.user = null;
-      localStorage.clear();
+      localStorage.removeItem('nadeuigo_user'); // 세션만 제거 (계정별 누적 데이터는 보존)
       // React Native로 로그아웃 메시지 전송
       if(window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage('logout');
@@ -8272,7 +8297,7 @@ function buildSettingsPage(){
       }
       overlay.remove();
       S.user = null;
-      localStorage.clear();
+      localStorage.removeItem('nadeuigo_user'); // 세션만 제거 (계정별 누적 데이터는 보존)
       const toast=div('');css(toast,{position:'fixed',bottom:'100px',left:'50%',
         transform:'translateX(-50%)',background:'rgba(0,0,0,.75)',color:'#fff',
         padding:'10px 20px',borderRadius:'9999px',fontSize:'13px',fontWeight:'700',zIndex:'300'});
@@ -11083,12 +11108,55 @@ function loadScriptOnce(src){
 
   function showSignupForm(screen, idInp, pwInp, errMsg, loginBtn, signupRow){
     const inpStyle = 'width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid #e2e8f0;font-size:14px;outline:none;font-family:inherit;margin-bottom:8px;box-sizing:border-box;';
+
+    // 닉네임
     const nameInp = document.createElement('input');
-    nameInp.type = 'text'; nameInp.placeholder = '닉네임';
+    nameInp.type = 'text'; nameInp.placeholder = '닉네임 (앱에서 표시될 이름)';
     nameInp.style.cssText = inpStyle;
     screen.insertBefore(nameInp, idInp);
+
+    // 이름 (실명)
+    const realInp = document.createElement('input');
+    realInp.type = 'text'; realInp.placeholder = '이름';
+    realInp.style.cssText = inpStyle;
+    screen.insertBefore(realInp, idInp);
+
+    // 전화번호
+    const phoneInp = document.createElement('input');
+    phoneInp.type = 'tel'; phoneInp.placeholder = '전화번호 (숫자만 입력)';
+    phoneInp.style.cssText = inpStyle;
+    screen.insertBefore(phoneInp, idInp);
+
+    // 개인정보 수집·이용 동의
+    const consentRow = document.createElement('div');
+    consentRow.style.cssText = 'display:flex;align-items:center;gap:8px;width:100%;margin:4px 0 10px;font-size:13px;color:#475569;';
+    const consentChk = document.createElement('input');
+    consentChk.type = 'checkbox';
+    consentChk.style.cssText = 'width:18px;height:18px;accent-color:#ef8200;cursor:pointer;flex-shrink:0;';
+    const consentLbl = document.createElement('span');
+    consentLbl.textContent = '[필수] 개인정보 수집·이용 동의';
+    consentLbl.style.cssText = 'cursor:pointer;';
+    consentLbl.onclick = () => { consentChk.checked = !consentChk.checked; };
+    const consentView = document.createElement('span');
+    consentView.textContent = '보기';
+    consentView.style.cssText = 'color:#94a3b8;text-decoration:underline;cursor:pointer;margin-left:auto;font-size:12px;';
+    consentView.onclick = () => {
+      alert('개인정보 수집·이용 동의\n\n■ 수집 항목: 닉네임, 이름, 아이디, 전화번호\n\n■ 이용 목적: 회원 관리, 서비스 제공, 축제 알림, 동행 매칭\n\n■ 보유 기간: 회원 탈퇴 후 30일 이내 파기\n\n■ 제3자 제공: 이용자 동의 없이 외부에 제공하지 않습니다.\n\n동의를 거부할 권리가 있으며, 거부 시 회원가입이 제한됩니다.\n\n문의: privacy@nadeuigo.kr');
+    };
+    consentRow.appendChild(consentChk);
+    consentRow.appendChild(consentLbl);
+    consentRow.appendChild(consentView);
+    screen.insertBefore(consentRow, errMsg);
+
     loginBtn.textContent = '회원가입';
-    loginBtn.onclick = () => signupWithId(nameInp.value.trim(), idInp.value.trim(), pwInp.value, errMsg);
+    loginBtn.onclick = () => signupWithId({
+      name: nameInp.value.trim(),
+      realName: realInp.value.trim(),
+      phone: phoneInp.value.trim().replace(/[^0-9]/g,''),
+      id: idInp.value.trim(),
+      pw: pwInp.value,
+      agreed: consentChk.checked
+    }, errMsg);
     signupRow.innerHTML = `이미 계정이 있으신가요? <span style="color:#ef8200;font-weight:700;cursor:pointer;" onclick="document.getElementById('login-screen').remove();window.showLoginScreen&&window.showLoginScreen()">로그인</span>`;
   }
 
@@ -11098,6 +11166,7 @@ function loadScriptOnce(src){
     if(screen) screen.remove();
     S.user = user;
     localStorage.setItem('nadeuigo_user', JSON.stringify(user));
+    loadUserData(); // 이 계정의 누적 데이터 불러오기 (처음이면 전부 0)
     render();
     // 환영 토스트
     const toast = document.createElement('div');
@@ -11194,11 +11263,15 @@ function loadScriptOnce(src){
     }
   }
 
-  async function signupWithId(name, id, pw, errMsg){
+  async function signupWithId(info, errMsg){
+    const {name, realName, phone, id, pw, agreed} = info;
     if(!name){ showAuthError(errMsg,'닉네임을 입력해주세요'); return; }
+    if(!realName){ showAuthError(errMsg,'이름을 입력해주세요'); return; }
+    if(!/^01[016789][0-9]{7,8}$/.test(phone)){ showAuthError(errMsg,'올바른 휴대폰 번호를 입력해주세요'); return; }
     if(!id){ showAuthError(errMsg,'아이디를 입력해주세요'); return; }
     if(!/^[a-zA-Z0-9_]{3,20}$/.test(id)){ showAuthError(errMsg,'아이디는 영문·숫자 3~20자로 입력해주세요'); return; }
     if(pw.length < 6){ showAuthError(errMsg,'비밀번호는 6자 이상이어야 해요'); return; }
+    if(!agreed){ showAuthError(errMsg,'개인정보 수집·이용에 동의해주세요'); return; }
     showAuthError(errMsg,'가입 중...');
     await waitForSdk(() => typeof db !== 'undefined' && db, 5000);
     if(!db){ showAuthError(errMsg,'네트워크 연결을 확인해주세요'); return; }
@@ -11207,7 +11280,15 @@ function loadScriptOnce(src){
       const doc = await ref.get();
       if(doc.exists){ showAuthError(errMsg,'이미 사용 중인 아이디예요'); return; }
       const hash = await _pwHash(id, pw);
-      await ref.set({ id: id, name: name, pw: hash, createdAt: new Date().toISOString() });
+      await ref.set({
+        id: id,
+        name: name,
+        realName: realName,
+        phone: phone,
+        pw: hash,
+        privacyAgreedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      });
       onLoginSuccess({uid:'id_'+id, name: name, email:id+'@nadeuigo.com', photo:null, provider:'id'});
     }catch(e){
       console.warn('[나들이go] 가입 오류:', e.message);
@@ -11221,6 +11302,7 @@ function loadScriptOnce(src){
     const savedUser = localStorage.getItem('nadeuigo_user');
     if(savedUser){ S.user = JSON.parse(savedUser); }
   }catch(e){ S.user = null; }
+  loadUserData(); // 계정별 누적 데이터(스탬프·쿠폰 등) 복원
   window.showLoginScreen = buildLoginScreen; // 마이고 탭에서 호출용
 
   document.addEventListener('touchstart',e=>{
