@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260721J';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1666,24 +1666,49 @@ function saveMatePost(m){
   }catch(e){}
 }
 
-// 동행글 불러오기 (신고 3회 이상·숨김 글 제외)
-async function loadMatePosts(){
-  try{
-    if(!db) return;
-    const snap = await db.collection('mate_posts').orderBy('createdAt','desc').limit(100).get();
-    const loaded = [];
-    snap.forEach(doc => {
-      const d = doc.data();
-      if(d.hidden === true) return;
-      if((d.reports||0) >= 3) return;
-      loaded.push(Object.assign({}, d, {
-        isMe: !!(S.user && d.authorUid && d.authorUid === S.user.uid),
-        dday: 7, applicants: [], chats: []
-      }));
-    });
-    S.mates = loaded;
-    console.log('[나들이go] 동행글', loaded.length, '개 로드');
-  }catch(e){ console.warn('[나들이go] 동행글 로드 실패:', e.message); }
+// 동행글 실시간 구독 (신규 글·신청·수락이 모든 폰에 즉시 반영)
+function loadMatePosts(){
+  return new Promise(resolve => {
+    try{
+      if(!db){ resolve(); return; }
+      db.collection('mate_posts').orderBy('createdAt','desc').limit(100)
+        .onSnapshot(snap => {
+          const prevMap = {};
+          (S.mates||[]).forEach(m => prevMap[m.id] = m);
+          const loaded = [];
+          let gotNewApplicant = false;
+          snap.forEach(doc => {
+            const d = doc.data();
+            if(d.hidden === true) return;
+            if((d.reports||0) >= 3) return;
+            const prev = prevMap[d.id];
+            loaded.push(Object.assign({}, d, {
+              isMe: !!(S.user && d.authorUid && d.authorUid === S.user.uid),
+              dday: 7,
+              applicants: d.applicants || [],
+              chats: (prev && prev.chats) || []
+            }));
+            // 내 글에 새 신청이 도착하면 알림
+            if(S.user && d.authorUid === S.user.uid && prev){
+              const before = (prev.applicants||[]).length;
+              const now = (d.applicants||[]).length;
+              if(now > before){
+                const na = (d.applicants||[])[now-1] || {};
+                S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'user',ic_c:'#ef8200',ic_bg:'#FDF5E6',
+                  title:'새 동행 신청이 도착했어요! 🙋',
+                  desc:(na.name?na.name+'님이 ':'')+'"'+(d.title||'내 모집글')+'"에 신청했어요',time:'방금 전'});
+                gotNewApplicant = true;
+              }
+            }
+          });
+          S.mates = loaded;
+          // 입력 중인 화면(글쓰기·채팅)이 아니면 갱신
+          const typing = S.mateView === 'write' || S.mateView === 'chat';
+          if(!typing && (S.tab === 'chat' || S.showNotif || gotNewApplicant)) render();
+          resolve();
+        }, err => { console.warn('[나들이go] 동행글 구독 실패:', err.message); resolve(); });
+    }catch(e){ resolve(); }
+  });
 }
 
 // 동행글 신고 (계정당 1회, 3회 누적 시 자동 숨김)
@@ -3229,7 +3254,7 @@ function buildMateDetail(){
 
   const page=div('mate-detail-page');
   if(!S._back) page.classList.add('slide-right');
-  const myApplicant=m.applicants.find(a=>a.id==='me');
+  const myApplicant=m.applicants.find(a=>a.id==='me'||(S.user&&a.id===S.user.uid));
   const isApplied=!!myApplicant;
   const isAccepted=myApplicant?.status==='accepted';
 
@@ -3437,6 +3462,9 @@ function buildMateDetail(){
           css(accB,{opacity:'.6',transform:'scale(.95)'});
           a.status='accepted';
           m.filledSlots=Math.min(m.filledSlots+1,m.totalSlots);
+          // Firestore 반영 → 신청자 폰에서도 수락 상태 확인 가능
+          try{ if(db) db.collection('mate_posts').doc(String(m.id)).set(
+            {applicants:m.applicants, filledSlots:m.filledSlots},{merge:true}).catch(()=>{}); }catch(e){}
           setTimeout(switchToAccepted,80);
         });
         css(accB,{padding:'8px 14px',borderRadius:'9px',border:'none',
@@ -3516,7 +3544,7 @@ function buildMateDetail(){
 
   if(m.isMe){
     // [OWNER] 관리자 전용 버튼 — 다크 + 연필 아이콘 느낌
-    applyBtn=btn('','✏️  내 모집글 수정/관리하기',()=>setState({mateView:'myPosts'}));
+    applyBtn=btn('','✏️  이 글 수정하기',()=>setState({mateView:'write',writeStep:0,writeData:Object.assign({},m,{_editId:m.id})}));
     css(applyBtn,{...base,
       background:'linear-gradient(135deg,#1a1a2e,#16213e)',
       color:'#fff',
@@ -3538,7 +3566,11 @@ function buildMateDetail(){
   } else {
     applyBtn=btn('','동행 신청하기',()=>{
       if(!S.user){ showLoginPrompt('동행을 신청하려면 로그인이 필요해요.'); return; }
-      m.applicants.push({id:'me',name:(S.user&&S.user.name)||'나',age:'',gender:'',bio:'같이 가고 싶어요!',color:'#FF7E36',status:'pending'});
+      const applicant={id:S.user.uid,name:(S.user&&S.user.name)||'익명',age:'',gender:'',bio:'같이 가고 싶어요!',color:'#FF7E36',status:'pending',appliedAt:new Date().toISOString()};
+      m.applicants.push(applicant);
+      // Firestore에 저장 → 모집자 폰에 실시간 알림
+      try{ if(db) db.collection('mate_posts').doc(String(m.id)).set(
+        {applicants: firebase.firestore.FieldValue.arrayUnion(applicant)},{merge:true}).catch(()=>{}); }catch(e){}
       S.notifications.unshift({id:Date.now(),unread:true,ic:'user',ic_c:'#FF7E36',ic_bg:'#fff6f2',
         title:`${m.festName} 동행 신청 완료`,desc:'모집자가 수락하면 채팅방이 열려요!',time:'방금 전'});
       setState({});
@@ -3688,6 +3720,29 @@ function buildMateWrite(){
       const bad = containsBannedWord((data.title||'') + ' ' + (data.desc||''));
       if(bad){
         alert('부적절한 표현이 포함되어 있어 등록할 수 없어요.\n\n나들이go는 건전한 축제 동행 커뮤니티를 지향합니다.\n반복 위반 시 이용이 제한될 수 있어요.');
+        return;
+      }
+      // ── 수정 모드: 기존 글 업데이트
+      if(data._editId){
+        const ex=S.mates.find(x=>x.id===data._editId);
+        if(ex){
+          Object.assign(ex,{
+            festivalId:data.festivalId||ex.festivalId,festName:data.festName||ex.festName,festDate:data.festDate||ex.festDate,
+            meetDate:data.meetDate||ex.meetDate,meetTime:data.meetTime||ex.meetTime,
+            totalSlots:data.totalSlots||ex.totalSlots,ageRange:data.ageRange||ex.ageRange,
+            gender:data.gender||ex.gender,carpool:!!data.carpool,costPerPerson:data.costPerPerson||0,
+            title:data.title||ex.title,desc:(data.desc!==undefined?data.desc:ex.desc),tags:data.tags||ex.tags
+          });
+          // Firestore 반영 (신청자·신고 수는 보존)
+          try{ if(db) db.collection('mate_posts').doc(String(ex.id)).set({
+            festivalId:ex.festivalId||'',festName:ex.festName||'',festDate:ex.festDate||'',
+            meetDate:ex.meetDate||'미정',meetTime:ex.meetTime||'미정',totalSlots:ex.totalSlots||2,
+            ageRange:ex.ageRange||'누구나',gender:ex.gender||'누구나',carpool:!!ex.carpool,
+            costPerPerson:ex.costPerPerson||0,title:ex.title||'',desc:ex.desc||'',tags:ex.tags||[]
+          },{merge:true}).catch(()=>{}); }catch(e){}
+        }
+        S.notifications.unshift({id:Date.now(),unread:true,ic:'user',ic_c:'#ef8200',ic_bg:'#FDF5E6',title:'모집글이 수정되었어요 ✏️',desc:data.title||'',time:'방금 전'});
+        setState({mateView:'detail',selectedMate:data._editId,writeStep:0,writeData:{},chatTab:'동행'});
         return;
       }
       const festRef=S.festivals.find(f=>f.id===data.festivalId);
@@ -11307,6 +11362,7 @@ function loadScriptOnce(src){
     S.user = user;
     localStorage.setItem('nadeuigo_user', JSON.stringify(user));
     loadUserData(); // 이 계정의 누적 데이터 불러오기 (처음이면 전부 0)
+    (S.mates||[]).forEach(mm=>{ mm.isMe = !!(mm.authorUid && mm.authorUid === user.uid); });
     render();
     // 환영 토스트
     const toast = document.createElement('div');
