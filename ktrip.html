@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722C';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1688,19 +1688,27 @@ function loadMatePosts(){
               applicants: d.applicants || [],
               chats: (prev && prev.chats) || []
             }));
-            // 내 글에 새 신청이 도착하면 알림
-            if(S.user && d.authorUid === S.user.uid && prev){
-              const before = (prev.applicants||[]).length;
-              const now = (d.applicants||[]).length;
-              if(now > before){
-                const na = (d.applicants||[])[now-1] || {};
+          // 내 글의 신청 확인: 마지막으로 확인한 신청자 수와 비교
+          // (앱이 꺼져 있던 사이에 온 신청도 다시 켰을 때 알림)
+          if(S.user && d.authorUid === S.user.uid){
+            let seenMap = {};
+            try{ seenMap = JSON.parse(localStorage.getItem(userDataKey('nadeuigo_seen_apps'))||'{}'); }catch(e){}
+            const seen = (typeof seenMap[d.id] === 'number') ? seenMap[d.id] : 0;
+            const now = (d.applicants||[]).length;
+            if(now > seen){
+              const newOnes = (d.applicants||[]).slice(seen);
+              newOnes.forEach(na => {
                 S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'user',ic_c:'#ef8200',ic_bg:'#FDF5E6',
                   title:'새 동행 신청이 도착했어요! 🙋',
                   desc:(na.name?na.name+'님이 ':'')+'"'+(d.title||'내 모집글')+'"에 신청했어요',time:'방금 전'});
-                gotNewApplicant = true;
-                showTopBanner('🙋 ' + (na.name||'누군가') + '님이 동행을 신청했어요!');
-              }
+              });
+              const last = newOnes[newOnes.length-1] || {};
+              showTopBanner('🙋 ' + (last.name||'누군가') + '님이 동행을 신청했어요!');
+              gotNewApplicant = true;
+              seenMap[d.id] = now;
+              try{ localStorage.setItem(userDataKey('nadeuigo_seen_apps'), JSON.stringify(seenMap)); }catch(e){}
             }
+          }
           });
           S.mates = loaded;
           // 입력 중인 화면(글쓰기·채팅)이 아니면 갱신
@@ -3897,6 +3905,7 @@ function buildMateChat(){
       setText(av,(msg.name||'?')[0]);
 
       const col=div('');
+      css(col,{flex:'1',minWidth:'0',display:'flex',flexDirection:'column',alignItems:'flex-start'});
       const nameEl=div('');
       css(nameEl,{fontSize:'11px',color:'#868b94',marginBottom:'4px',fontWeight:'600'});
       setText(nameEl,msg.name||'');
@@ -3906,7 +3915,7 @@ function buildMateChat(){
         background:'#f2f3f5',color:'#212124',
         borderRadius:'4px 16px 16px 16px',
         padding:'10px 14px',fontSize:'14px',lineHeight:'1.6',
-        maxWidth:'68%',wordBreak:'break-word'
+        maxWidth:'85%',width:'fit-content',wordBreak:'break-word',whiteSpace:'pre-wrap'
       });
       setText(bubble,msg.text);
       ap(col,nameEl,bubble);
@@ -3917,7 +3926,7 @@ function buildMateChat(){
         background:'#FF7E36',color:'#fff',
         borderRadius:'16px 4px 16px 16px',
         padding:'10px 14px',fontSize:'14px',lineHeight:'1.6',
-        maxWidth:'68%',wordBreak:'break-word'
+        maxWidth:'72%',width:'fit-content',wordBreak:'break-word',whiteSpace:'pre-wrap'
       });
       setText(bubble,msg.text);
       wrap.appendChild(bubble);
