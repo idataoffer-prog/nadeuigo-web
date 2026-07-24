@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722F';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722G';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1705,7 +1705,8 @@ function loadMatePosts(){
                   desc:(na.name?na.name+'님이 ':'')+'"'+(d.title||'내 모집글')+'"에 신청했어요',time:'방금 전'});
               });
               const last = newOnes[newOnes.length-1] || {};
-              showTopBanner('🙋 ' + (last.name||'누군가') + '님이 동행을 신청했어요!');
+              showTopBanner('🙋 ' + (last.name||'누군가') + '님이 동행을 신청했어요!',
+                ()=>setState({showNotif:false,tab:'chat',chatTab:'동행',mateView:'detail',selectedMate:d.id,item:null,sub:null}));
               gotNewApplicant = true;
               seenMap[d.id] = now;
               try{ localStorage.setItem(userDataKey('nadeuigo_seen_apps'), JSON.stringify(seenMap)); }catch(e){}
@@ -1722,7 +1723,8 @@ function loadMatePosts(){
                   postId:d.id,
                   title:'동행이 수락됐어요! 🎉',
                   desc:'"'+(d.title||'모집글')+'" 모집자가 함께하기를 눌렀어요. 채팅을 시작해보세요!',time:'방금 전'});
-                showTopBanner('🎉 동행이 수락됐어요! 채팅을 시작해보세요');
+                showTopBanner('🎉 동행이 수락됐어요! 채팅을 시작해보세요',
+                  ()=>setState({showNotif:false,tab:'chat',chatTab:'동행',mateView:'detail',selectedMate:d.id,item:null,sub:null}));
                 gotNewApplicant = true;
                 accMap[d.id] = true;
                 try{ localStorage.setItem(userDataKey('nadeuigo_seen_acc'), JSON.stringify(accMap)); }catch(e){}
@@ -3878,7 +3880,7 @@ function buildMateWrite(){
 }
 
 // ── 화면 상단 배너 알림 (새 신청 등 즉시 표시)
-function showTopBanner(txt){
+function showTopBanner(txt, onTap){
   try{
     const old=document.getElementById('top-banner'); if(old) old.remove();
     const b=document.createElement('div');
@@ -3888,7 +3890,7 @@ function showTopBanner(txt){
       +'box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:8px;cursor:pointer;'
       +'transform:translateY(-80px);transition:transform .25s ease;';
     b.textContent=txt;
-    b.onclick=()=>{ b.remove(); setState({showNotif:true}); };
+    b.onclick=()=>{ b.remove(); if(typeof onTap==='function'){ onTap(); } else { setState({showNotif:true}); } };
     document.body.appendChild(b);
     requestAnimationFrame(()=>{ b.style.transform='translateY(0)'; });
     setTimeout(()=>{ b.style.transform='translateY(-80px)'; setTimeout(()=>b.remove(),300); }, 3500);
@@ -3935,7 +3937,8 @@ function subscribeChatRoom(roomId){
               postId: parseInt(roomId), roomId: roomId,
               title:'새 채팅이 도착했어요 💬',
               desc:(lastM.senderName||'상대')+': '+preview, time:'방금 전'});
-            showTopBanner('💬 '+(lastM.senderName||'상대')+': '+preview);
+            showTopBanner('💬 '+(lastM.senderName||'상대')+': '+preview,
+              ()=>setState({showNotif:false,tab:'chat',chatTab:'채팅',mateView:'chat',chatRoomId:roomId,item:null,sub:null}));
           }
           seenMap[roomId] = arr.length;
           try{ localStorage.setItem(userDataKey('nadeuigo_seen_chat'), JSON.stringify(seenMap)); }catch(e){}
