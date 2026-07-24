@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722E';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722F';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -3932,7 +3932,7 @@ function subscribeChatRoom(roomId){
             const lastM = newOthers[newOthers.length-1];
             const preview = String(lastM.text||'').slice(0,30);
             S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'chat',ic_c:'#3b82f6',ic_bg:'#eff6ff',
-              postId: parseInt(roomId),
+              postId: parseInt(roomId), roomId: roomId,
               title:'새 채팅이 도착했어요 💬',
               desc:(lastM.senderName||'상대')+': '+preview, time:'방금 전'});
             showTopBanner('💬 '+(lastM.senderName||'상대')+': '+preview);
@@ -10722,8 +10722,11 @@ function buildNotifPanel(){
       const item=div(`notif-item${n.unread?' unread':''}`);
       item.onclick=()=>{
         S.notifications=S.notifications.map(x=>x.id===n.id?{...x,unread:false}:x);
-        if(n.postId && S.mates.find(x=>x.id===n.postId)){
-          // 관련 게시물로 바로 이동
+        if(n.roomId){
+          // 채팅 알림 → 해당 채팅방으로 바로 이동
+          setState({showNotif:false,tab:'chat',chatTab:'채팅',mateView:'chat',chatRoomId:n.roomId,item:null,sub:null});
+        } else if(n.postId && S.mates.find(x=>x.id===n.postId)){
+          // 신청·수락 알림 → 해당 게시물로 이동
           setState({showNotif:false,tab:'chat',chatTab:'동행',mateView:'detail',selectedMate:n.postId,item:null,sub:null});
         } else {
           setState({showNotif:true});
