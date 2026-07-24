@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722E';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1571,6 +1571,7 @@ function showLoginPrompt(msg){
 }
 
 function setState(p, _opts={}){
+  if(p.chatRoomId === null) window._chatAnimRoom = null; // 채팅방 나가면 다음 입장 시 애니메이션 복원
   // 타로점·동행글 작성·채팅방 입장은 로그인해야 이용 가능 → 안내 팝업
   if((p.showDna === true || p.mateView === 'write' || (p.chatRoomId && p.chatRoomId !== null)) && !S.user){
     showLoginPrompt(p.mateView === 'write'
@@ -1730,6 +1731,7 @@ function loadMatePosts(){
           }
           });
           S.mates = loaded;
+          syncMyChatSubs(); // 수락된 채팅방들 실시간 감시 시작
           // 입력 중인 화면(글쓰기·채팅)이 아니면 갱신
           const typing = S.mateView === 'write' || S.mateView === 'chat';
           if(!typing && (S.tab === 'chat' || S.showNotif || gotNewApplicant)) render();
@@ -3900,13 +3902,12 @@ function fmtChatTime(iso){
     return (hh>11?'오후':'오전')+' '+(hh>12?hh-12:(hh===0?12:hh))+':'+mm;
   }catch(e){ return ''; }
 }
+// 방별 구독 관리 (내 모든 채팅방을 항상 감시 → 어디에 있든 새 메시지 알림)
+window._roomSubs = window._roomSubs || {};
 function subscribeChatRoom(roomId){
-  if(window._chatSubRoom === roomId) return;
-  if(window._chatUnsub){ try{ window._chatUnsub(); }catch(e){} window._chatUnsub=null; }
-  window._chatSubRoom = roomId;
-  if(!db || !roomId) return;
+  if(!db || !roomId || window._roomSubs[roomId]) return;
   try{
-    window._chatUnsub = db.collection('mate_chats').where('roomId','==',roomId)
+    window._roomSubs[roomId] = db.collection('mate_chats').where('roomId','==',roomId)
       .onSnapshot(snap => {
         const arr=[];
         snap.forEach(doc => arr.push(doc.data()));
@@ -3920,9 +3921,41 @@ function subscribeChatRoom(roomId){
           time: fmtChatTime(d.createdAt),
           color: d.color || '#FF7E36'
         }));
+        // ── 새 메시지 알림 (마지막으로 본 개수와 비교)
+        let seenMap = {};
+        try{ seenMap = JSON.parse(localStorage.getItem(userDataKey('nadeuigo_seen_chat'))||'{}'); }catch(e){}
+        const seen = seenMap[roomId] || 0;
+        if(arr.length > seen){
+          const inRoom = (S.chatRoomId === roomId && S.mateView === 'chat');
+          const newOthers = arr.slice(seen).filter(d => d.senderUid !== myUid);
+          if(!inRoom && newOthers.length){
+            const lastM = newOthers[newOthers.length-1];
+            const preview = String(lastM.text||'').slice(0,30);
+            S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'chat',ic_c:'#3b82f6',ic_bg:'#eff6ff',
+              postId: parseInt(roomId),
+              title:'새 채팅이 도착했어요 💬',
+              desc:(lastM.senderName||'상대')+': '+preview, time:'방금 전'});
+            showTopBanner('💬 '+(lastM.senderName||'상대')+': '+preview);
+          }
+          seenMap[roomId] = arr.length;
+          try{ localStorage.setItem(userDataKey('nadeuigo_seen_chat'), JSON.stringify(seenMap)); }catch(e){}
+        }
         if(S.chatRoomId === roomId && S.mateView === 'chat') render();
+        else if(S.tab === 'chat' && S.chatTab === '채팅' && !S.mateView) render(); // 내 채팅 목록 미리보기 갱신
       }, err => console.warn('[나들이go] 채팅 구독 실패:', err.message));
   }catch(e){}
+}
+// 내 모든 채팅방 구독 시작 (동행글 로드 후 호출)
+function syncMyChatSubs(){
+  if(!S.user) return;
+  S.mates.forEach(mm => {
+    (mm.applicants||[]).forEach(aa => {
+      if(aa.status !== 'accepted') return;
+      if(mm.isMe || aa.id === S.user.uid){
+        subscribeChatRoom(mm.id + '_' + aa.id);
+      }
+    });
+  });
 }
 
 function buildMateChat(){
@@ -3932,9 +3965,19 @@ function buildMateChat(){
   const msgs=S.chatMessages[roomId];
   const m=S.mates.find(x=>x.id===parseInt(roomId));
   const partner=m?.applicants.find(a=>a.status==='accepted');
+  // 채팅방을 '본 것'으로 표시 (열려있는 동안 온 메시지는 알림 X)
+  try{
+    let sc=JSON.parse(localStorage.getItem(userDataKey('nadeuigo_seen_chat'))||'{}');
+    sc[roomId]=msgs.length;
+    localStorage.setItem(userDataKey('nadeuigo_seen_chat'),JSON.stringify(sc));
+  }catch(e){}
 
   const page=div('chat-page');
-  if(!S._back) page.classList.add('slide-right');
+  // 슬라이드 모션은 방에 처음 들어올 때 한 번만 (메시지 갱신 재렌더 시엔 없음)
+  if(!S._back && window._chatAnimRoom !== roomId){
+    page.classList.add('slide-right');
+    window._chatAnimRoom = roomId;
+  }
 
   /* ── 헤더 (당근 스타일) */
   const hdr=div('');
