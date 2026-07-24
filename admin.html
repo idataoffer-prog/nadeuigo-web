@@ -209,6 +209,14 @@
     </div>
   </div>
 
+  <!-- 관리 영역 전환 탭 -->
+  <div style="display:flex;background:#fff;border-bottom:1px solid #e2e8f0;">
+    <div id="mtab-fest" onclick="switchMgr('fest')" style="flex:1;padding:13px;text-align:center;font-size:14px;font-weight:700;color:#ef8200;cursor:pointer;border-bottom:2.5px solid #ef8200;">🎪 축제 관리</div>
+    <div id="mtab-users" onclick="switchMgr('users')" style="flex:1;padding:13px;text-align:center;font-size:14px;font-weight:700;color:#94a3b8;cursor:pointer;border-bottom:2.5px solid transparent;">👤 회원 관리</div>
+    <div id="mtab-posts" onclick="switchMgr('posts')" style="flex:1;padding:13px;text-align:center;font-size:14px;font-weight:700;color:#94a3b8;cursor:pointer;border-bottom:2.5px solid transparent;">📋 게시물 관리</div>
+  </div>
+
+  <div id="mgr-fest">
   <div class="stats">
     <div class="stat"><div class="label">전체 축제</div><div class="value" id="stat-total">-</div></div>
     <div class="stat orange"><div class="label">⚡ VESTOR 운영</div><div class="value" id="stat-idata">-</div></div>
@@ -277,6 +285,21 @@
 
     <!-- 카드 뷰 -->
     <div class="card-grid" id="view-card" style="display:none"></div>
+  </div>
+  </div><!-- /mgr-fest -->
+
+  <!-- ═══ 회원 관리 ═══ -->
+  <div id="mgr-users" style="display:none;max-width:860px;margin:0 auto;padding:16px;">
+    <input id="u-search" placeholder="🔍 닉네임 / 아이디 검색" oninput="renderUsers()"
+      style="width:100%;padding:12px 16px;border-radius:12px;border:1.5px solid #e2e8f0;font-size:14px;outline:none;margin-bottom:14px;font-family:inherit;">
+    <div id="u-list" style="font-size:14px;"><div style="text-align:center;color:#94a3b8;padding:50px 0;">회원 관리 탭을 열면 목록을 불러옵니다</div></div>
+  </div>
+
+  <!-- ═══ 게시물 관리 ═══ -->
+  <div id="mgr-posts" style="display:none;max-width:860px;margin:0 auto;padding:16px;">
+    <input id="p-search" placeholder="🔍 제목 / 작성자 검색" oninput="renderPosts()"
+      style="width:100%;padding:12px 16px;border-radius:12px;border:1.5px solid #e2e8f0;font-size:14px;outline:none;margin-bottom:14px;font-family:inherit;">
+    <div id="p-list" style="font-size:14px;"><div style="text-align:center;color:#94a3b8;padding:50px 0;">게시물 관리 탭을 열면 목록을 불러옵니다</div></div>
   </div>
 </div>
 
@@ -3034,5 +3057,114 @@ function toast(msg, type){
 initGate();
 </script>
 
+<script>
+// ═══════════ 회원 · 게시물 관리 ═══════════
+let MGR_USERS = [], MGR_POSTS = [], MGR_LOADED = false;
+
+function switchMgr(t){
+  document.getElementById('mgr-fest').style.display  = (t==='fest')  ? '' : 'none';
+  document.getElementById('mgr-users').style.display = (t==='users') ? '' : 'none';
+  document.getElementById('mgr-posts').style.display = (t==='posts') ? '' : 'none';
+  ['fest','users','posts'].forEach(x=>{
+    const el=document.getElementById('mtab-'+x);
+    const on = x===t;
+    el.style.color = on?'#ef8200':'#94a3b8';
+    el.style.borderBottomColor = on?'#ef8200':'transparent';
+  });
+  if(t!=='fest' && !MGR_LOADED) loadMgrData();
+}
+
+async function loadMgrData(){
+  try{
+    const [uSnap,pSnap] = await Promise.all([
+      db.collection('app_users').get(),
+      db.collection('mate_posts').orderBy('createdAt','desc').get()
+    ]);
+    MGR_USERS = uSnap.docs.map(d=>({_id:d.id, ...d.data()}));
+    MGR_USERS.sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+    MGR_POSTS = pSnap.docs.map(d=>({_id:d.id, ...d.data()}));
+    MGR_LOADED = true;
+    renderUsers(); renderPosts();
+  }catch(e){
+    document.getElementById('u-list').innerHTML='<div style="text-align:center;color:#dc2626;padding:40px 0;">불러오기 실패: '+e.message+'</div>';
+    document.getElementById('p-list').innerHTML='<div style="text-align:center;color:#dc2626;padding:40px 0;">불러오기 실패: '+e.message+'</div>';
+  }
+}
+function mgrDate(iso){ if(!iso) return '-'; try{const d=new Date(iso);return d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');}catch(e){return '-';} }
+function mgrEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderUsers(){
+  const q=(document.getElementById('u-search').value||'').trim().toLowerCase();
+  const rows=MGR_USERS.filter(u=>!q||String(u.name||'').toLowerCase().includes(q)||String(u.id||'').toLowerCase().includes(q));
+  const list=document.getElementById('u-list');
+  if(!rows.length){ list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:50px 0;">회원이 없습니다</div>'; return; }
+  list.innerHTML='<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">전체 회원 '+MGR_USERS.length+'명</div>'+rows.map(u=>
+    '<div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;border:1px solid #eef2f7;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+    +'<div style="width:40px;height:40px;border-radius:50%;background:#ef8200;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;">'+mgrEsc((u.name||'?')[0])+'</div>'
+    +'<div style="flex:1;min-width:180px;"><div style="font-weight:800;">'+mgrEsc(u.name||'(닉네임 없음)')+' <span style="font-weight:400;color:#94a3b8;font-size:12px;">@'+mgrEsc(u.id||u._id)+'</span></div>'
+    +'<div style="font-size:12px;color:#64748b;margin-top:2px;">이름: '+mgrEsc(u.realName||'-')+' · 전화: '+mgrEsc(u.phone||'-')+' · 가입: '+mgrDate(u.createdAt)+'</div></div>'
+    +'<button onclick="mgrDelUser(\''+mgrEsc(u._id)+'\')" style="padding:8px 13px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fef2f2;color:#dc2626;font-family:inherit;">회원 삭제</button>'
+    +'</div>').join('');
+}
+
+function renderPosts(){
+  const q=(document.getElementById('p-search').value||'').trim().toLowerCase();
+  const rows=MGR_POSTS.filter(p=>!q||String(p.title||'').toLowerCase().includes(q)||String(p.author||'').toLowerCase().includes(q));
+  const list=document.getElementById('p-list');
+  const reported=MGR_POSTS.filter(p=>(p.reports||0)>0).length;
+  if(!rows.length){ list.innerHTML='<div style="text-align:center;color:#94a3b8;padding:50px 0;">게시물이 없습니다</div>'; return; }
+  list.innerHTML='<div style="font-size:12px;color:#94a3b8;margin-bottom:10px;">동행 게시물 '+MGR_POSTS.length+'건 · <span style="color:'+(reported?'#dc2626':'#16a34a')+';font-weight:700;">신고된 글 '+reported+'건</span></div>'
+    +rows.map(p=>{
+      const rep=p.reports||0;
+      const hidden=p.hidden===true||rep>=3;
+      return '<div style="background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;border:1px solid '+(rep>0?'#fecaca':'#eef2f7')+';">'
+        +'<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;">'
+        +'<div style="flex:1;min-width:200px;"><div style="font-weight:800;">'+mgrEsc(p.title||'(제목 없음)')+' '
+        +(hidden?'<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;background:#f1f5f9;color:#64748b;">숨김</span>':'<span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;background:#f0fdf4;color:#16a34a;">노출 중</span>')
+        +(rep>0?' <span style="font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;background:#fef2f2;color:#dc2626;">🚨 신고 '+rep+'회</span>':'')+'</div>'
+        +'<div style="font-size:12px;color:#64748b;margin-top:3px;line-height:1.6;">작성: '+mgrEsc(p.author||'익명')+' · '+mgrEsc(p.festName||'')+' · '+mgrDate(p.createdAt)+'<br>'+mgrEsc(String(p.desc||'').slice(0,80))+'</div></div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;">'
+        +(hidden
+          ?'<button onclick="mgrHide(\''+mgrEsc(p._id)+'\',false)" style="padding:8px 13px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fff7ed;color:#ef8200;font-family:inherit;">노출하기</button>'
+          :'<button onclick="mgrHide(\''+mgrEsc(p._id)+'\',true)" style="padding:8px 13px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#f1f5f9;color:#475569;font-family:inherit;">숨기기</button>')
+        +(rep>0?'<button onclick="mgrResetRep(\''+mgrEsc(p._id)+'\')" style="padding:8px 13px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#eff6ff;color:#2563eb;font-family:inherit;">신고 초기화</button>':'')
+        +'<button onclick="mgrDelPost(\''+mgrEsc(p._id)+'\')" style="padding:8px 13px;border-radius:9px;border:none;cursor:pointer;font-size:12px;font-weight:700;background:#fef2f2;color:#dc2626;font-family:inherit;">삭제</button>'
+        +'</div></div></div>';
+    }).join('');
+}
+
+async function mgrDelUser(id){
+  if(!confirm('이 회원을 삭제할까요?\n삭제하면 해당 아이디로 다시 로그인할 수 없습니다.')) return;
+  try{
+    await db.collection('app_users').doc(id).delete();
+    await db.collection('push_tokens').doc('id_'+id).delete().catch(()=>{});
+    MGR_USERS=MGR_USERS.filter(u=>u._id!==id); renderUsers();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+}
+async function mgrHide(id,v){
+  try{
+    await db.collection('mate_posts').doc(id).set({hidden:v},{merge:true});
+    const p=MGR_POSTS.find(x=>x._id===id); if(p) p.hidden=v; renderPosts();
+  }catch(e){ alert('처리 실패: '+e.message); }
+}
+async function mgrResetRep(id){
+  if(!confirm('신고 횟수를 0으로 초기화할까요? (문제없는 글로 확인된 경우)')) return;
+  try{
+    await db.collection('mate_posts').doc(id).set({reports:0,hidden:false},{merge:true});
+    const p=MGR_POSTS.find(x=>x._id===id); if(p){p.reports=0;p.hidden=false;} renderPosts();
+  }catch(e){ alert('처리 실패: '+e.message); }
+}
+async function mgrDelPost(id){
+  if(!confirm('이 게시물을 완전히 삭제할까요?\n관련 채팅 메시지도 함께 삭제됩니다.')) return;
+  try{
+    await db.collection('mate_posts').doc(id).delete();
+    const chats=await db.collection('mate_chats').get();
+    const batch=db.batch(); let n=0;
+    chats.forEach(doc=>{ const rid=String(doc.data().roomId||''); if(rid===id||rid.indexOf(id+'_')===0){batch.delete(doc.ref);n++;} });
+    if(n>0) await batch.commit();
+    MGR_POSTS=MGR_POSTS.filter(p=>p._id!==id); renderPosts();
+  }catch(e){ alert('삭제 실패: '+e.message); }
+}
+</script>
 </body>
 </html>
