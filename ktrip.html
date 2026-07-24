@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722G';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722H';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -8545,6 +8545,32 @@ function buildSettingsPage(){
     ap(sheet,handle,th,saveBtn);overlay.appendChild(sheet);page.appendChild(overlay);
   }
 
+  // ── 화면 섹션: 글자 크기
+  scroll.appendChild(makeSection('화면'));
+  const fsRow=div('');
+  css(fsRow,{background:'#fff',padding:'16px 20px',borderBottom:'1px solid #f2f3f5'});
+  const fsLabel=div('');css(fsLabel,{fontSize:'14px',fontWeight:'600',color:'#212124',marginBottom:'12px'});
+  setText(fsLabel,'글자 크기');
+  const fsBtns=div('');css(fsBtns,{display:'flex',gap:'8px'});
+  const curScale=parseFloat(localStorage.getItem('nadeuigo_fontscale')||'1');
+  [['작게',0.9],['보통',1],['크게',1.12],['아주 크게',1.25]].forEach(([lbl,v])=>{
+    const active=Math.abs(curScale-v)<0.01;
+    const fb=btn('',lbl,()=>{
+      window.applyFontScale(v);
+      render(); // 선택 표시 갱신
+    });
+    css(fb,{flex:'1',padding:'11px 4px',borderRadius:'10px',cursor:'pointer',
+      fontSize: (12*v)+'px', fontWeight:'700', fontFamily:'inherit',
+      border: active?'1.5px solid #ef8200':'1.5px solid #e2e8f0',
+      background: active?'#fff7ed':'#fff',
+      color: active?'#ef8200':'#64748b'});
+    fsBtns.appendChild(fb);
+  });
+  const fsHint=div('');css(fsHint,{fontSize:'11px',color:'#94a3b8',marginTop:'10px'});
+  setText(fsHint,'화면 전체가 선택한 크기에 맞춰 조정돼요.');
+  ap(fsRow,fsLabel,fsBtns,fsHint);
+  scroll.appendChild(fsRow);
+
   // ── 알림 섹션
   scroll.appendChild(makeSection('알림'));
   scroll.appendChild(makeToggle('축제 알림','찜한 축제 일정 및 혼잡도 알림','festAlert'));
@@ -11699,6 +11725,18 @@ function loadScriptOnce(src){
       showAuthError(errMsg,'가입 중 오류가 났어요. 잠시 후 다시 시도해주세요');
     }
   }
+
+  // ── 글자 크기 설정 적용 (설정에서 변경 가능)
+  window.applyFontScale = function(v){
+    try{
+      document.body.style.zoom = v;
+      localStorage.setItem('nadeuigo_fontscale', String(v));
+    }catch(e){}
+  };
+  try{
+    const savedScale = parseFloat(localStorage.getItem('nadeuigo_fontscale'));
+    if(savedScale && savedScale >= 0.8 && savedScale <= 1.4) document.body.style.zoom = savedScale;
+  }catch(e){}
 
   // ── 앱 시작: 로그인 없이 바로 둘러보기 가능 (쿠팡 스타일)
   // 저장된 로그인이 있으면 복원, 없으면 게스트로 홈 진입 (로그인은 마이고 탭에서)
