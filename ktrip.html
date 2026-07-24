@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722C';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1699,6 +1699,7 @@ function loadMatePosts(){
               const newOnes = (d.applicants||[]).slice(seen);
               newOnes.forEach(na => {
                 S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'user',ic_c:'#ef8200',ic_bg:'#FDF5E6',
+                  postId:d.id,
                   title:'새 동행 신청이 도착했어요! 🙋',
                   desc:(na.name?na.name+'님이 ':'')+'"'+(d.title||'내 모집글')+'"에 신청했어요',time:'방금 전'});
               });
@@ -1707,6 +1708,24 @@ function loadMatePosts(){
               gotNewApplicant = true;
               seenMap[d.id] = now;
               try{ localStorage.setItem(userDataKey('nadeuigo_seen_apps'), JSON.stringify(seenMap)); }catch(e){}
+            }
+          }
+          // 내가 신청한 글: 수락 여부 확인 → 수락되면 알림
+          if(S.user && d.authorUid !== S.user.uid){
+            const meApp = (d.applicants||[]).find(a => a.id === S.user.uid);
+            if(meApp && meApp.status === 'accepted'){
+              let accMap = {};
+              try{ accMap = JSON.parse(localStorage.getItem(userDataKey('nadeuigo_seen_acc'))||'{}'); }catch(e){}
+              if(!accMap[d.id]){
+                S.notifications.unshift({id:Date.now()+Math.random(),unread:true,ic:'check',ic_c:'#4CAF50',ic_bg:'#f0faf0',
+                  postId:d.id,
+                  title:'동행이 수락됐어요! 🎉',
+                  desc:'"'+(d.title||'모집글')+'" 모집자가 함께하기를 눌렀어요. 채팅을 시작해보세요!',time:'방금 전'});
+                showTopBanner('🎉 동행이 수락됐어요! 채팅을 시작해보세요');
+                gotNewApplicant = true;
+                accMap[d.id] = true;
+                try{ localStorage.setItem(userDataKey('nadeuigo_seen_acc'), JSON.stringify(accMap)); }catch(e){}
+              }
             }
           }
           });
@@ -3077,11 +3096,79 @@ function buildChat(){
 
   // 탭: 전체 / 내가 신청한
   const tabs=div('sub-tabs');
-  [['동행','동행 모집'],['카풀','카풀'],['자유','자유글']].forEach(([id,label])=>{
+  // 내 채팅 개수 배지
+  const _myRoomCount=(()=>{
+    let c=0;
+    if(S.user) S.mates.forEach(mm=>{
+      (mm.applicants||[]).forEach(aa=>{
+        if(aa.status==='accepted' && (mm.isMe || aa.id===S.user.uid)) c++;
+      });
+    });
+    return c;
+  })();
+  [['동행','동행 모집'],['채팅',_myRoomCount>0?`내 채팅 ${_myRoomCount}`:'내 채팅'],['카풀','카풀'],['자유','자유글']].forEach(([id,label])=>{
     const b=btn(`sub-tab${S.chatTab===id?' active':''}`,label,()=>setState({chatTab:id}));
     tabs.appendChild(b);
   });
   ap(hdrInner,row,tabs);hdr.appendChild(hdrInner);
+
+  if(S.chatTab==='채팅'){
+    // ── 내가 참여 중인 모든 채팅방 목록
+    const main=div('scroll-area');css(main,{padding:'14px 14px 100px',background:'#f8fafc'});
+    const myRooms=[];
+    if(S.user){
+      S.mates.forEach(mm=>{
+        (mm.applicants||[]).forEach(aa=>{
+          if(aa.status!=='accepted') return;
+          if(mm.isMe){
+            myRooms.push({m:mm,partnerName:aa.name||'상대',partnerColor:aa.color||'#FF7E36',roomId:mm.id+'_'+aa.id});
+          } else if(aa.id===S.user.uid){
+            myRooms.push({m:mm,partnerName:mm.author||'모집자',partnerColor:mm.authorColor||'#ef8200',roomId:mm.id+'_'+aa.id});
+          }
+        });
+      });
+    }
+    if(!S.user){
+      const empty=div('empty-state');
+      const et=div('empty-state-text');setText(et,'로그인하면 채팅을 볼 수 있어요');
+      const eb=btn('','로그인 · 회원가입',()=>{ if(window.showLoginScreen) window.showLoginScreen(); });
+      css(eb,{marginTop:'14px',padding:'12px 28px',borderRadius:'12px',border:'none',background:'#ef8200',color:'#fff',fontSize:'14px',fontWeight:'700',cursor:'pointer'});
+      ap(empty,div('empty-state-icon','💬'),et,eb);
+      main.appendChild(empty);
+    } else if(!myRooms.length){
+      const empty=div('empty-state');
+      ap(empty,div('empty-state-icon','💬'),
+        div('empty-state-text','진행 중인 채팅이 없어요'),
+        div('empty-state-sub','동행이 수락되면 여기서 채팅할 수 있어요'));
+      main.appendChild(empty);
+    } else {
+      myRooms.forEach(r=>{
+        const lastMsgs=S.chatMessages[r.roomId]||[];
+        const last=lastMsgs[lastMsgs.length-1];
+        const row=div('');
+        css(row,{background:'#fff',borderRadius:'14px',padding:'14px 16px',marginBottom:'10px',
+          display:'flex',alignItems:'center',gap:'13px',cursor:'pointer',
+          border:'1px solid #f2f3f5',boxShadow:'0 1px 5px rgba(0,0,0,.05)'});
+        row.onclick=()=>setState({mateView:'chat',chatRoomId:r.roomId});
+        const av=div('');
+        css(av,{width:'46px',height:'46px',borderRadius:'50%',background:r.partnerColor,
+          display:'flex',alignItems:'center',justifyContent:'center',
+          fontSize:'17px',fontWeight:'800',color:'#fff',flexShrink:'0'});
+        setText(av,(r.partnerName||'?')[0]);
+        const info=div('');css(info,{flex:'1',minWidth:'0'});
+        const nm=div('');css(nm,{fontSize:'14px',fontWeight:'700',color:'#212124',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'});
+        setText(nm,r.partnerName);
+        const sub=div('');css(sub,{fontSize:'12px',color:'#94a3b8',marginTop:'2px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'});
+        setText(sub, last ? last.text : (r.m.festName+' · '+(r.m.meetDate||'')));
+        ap(info,nm,sub);
+        const arrow=div('');css(arrow,{fontSize:'18px',color:'#cbd5e1',fontWeight:'700'});setText(arrow,'›');
+        ap(row,av,info,arrow);
+        main.appendChild(row);
+      });
+    }
+    ap(wrap,hdr,main);
+    return wrap;
+  }
 
   if(S.chatTab==='동행'){
     // 필터 바
@@ -3423,23 +3510,28 @@ function buildMateDetail(){
 
     m.applicants.forEach(a=>{
       const card=div('');
-      css(card,{display:'flex',alignItems:'center',gap:'14px',
-        background:'#fff',borderRadius:'14px',padding:'16px',
+      css(card,{background:'#fff',borderRadius:'14px',padding:'16px',
         marginBottom:'10px',border:'1px solid #f2f3f5',
         boxShadow:'0 1px 6px rgba(0,0,0,.06)'
       });
+      // 윗줄: 아바타 + 이름 (가로 표시)
+      const topRow=div('');css(topRow,{display:'flex',alignItems:'center',gap:'14px'});
       const av2=div('');
       css(av2,{width:'42px',height:'42px',borderRadius:'50%',background:a.color,
         display:'flex',alignItems:'center',justifyContent:'center',
         fontSize:'16px',fontWeight:'800',color:'#fff',flexShrink:'0'});
-      setText(av2,a.name[0]);
+      setText(av2,(a.name||'?')[0]);
       const info2=div('');css(info2,{flex:'1',minWidth:'0'});
-      const aName=div('');css(aName,{fontSize:'14px',fontWeight:'700',color:'#212124',marginBottom:'3px'});setText(aName,a.name);
+      const aName=div('');css(aName,{fontSize:'15px',fontWeight:'700',color:'#212124',marginBottom:'3px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'});setText(aName,a.name||'익명');
+      const bioParts=[]; if(a.age) bioParts.push(a.age+'세'); if(a.gender) bioParts.push(a.gender+'성'); if(a.bio) bioParts.push(a.bio);
       const aBio=div('');css(aBio,{fontSize:'12px',color:'#868b94',overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'});
-      setText(aBio,`${a.age}세 · ${a.gender}성 · ${a.bio}`);
+      setText(aBio,bioParts.join(' · '));
       ap(info2,aName,aBio);
+      ap(topRow,av2,info2);
+      card.appendChild(topRow);
 
-      const btns2=div('');css(btns2,{display:'flex',gap:'7px',flexShrink:'0'});
+      // 아랫줄: 버튼 전체 폭
+      const btns2=div('');css(btns2,{display:'flex',gap:'8px',marginTop:'12px'});
 
       function switchToAccepted(){
         btns2.style.opacity='0';
@@ -3447,10 +3539,10 @@ function buildMateDetail(){
         setTimeout(()=>{
           btns2.innerHTML='';
           const tag=div('');
-          css(tag,{fontSize:'12px',fontWeight:'700',color:'#4CAF50',background:'#f0faf0',padding:'7px 12px',borderRadius:'9px'});
+          css(tag,{flex:'1',textAlign:'center',fontSize:'13px',fontWeight:'700',color:'#4CAF50',background:'#f0faf0',padding:'12px',borderRadius:'10px'});
           setText(tag,'함께하기 ✓');
           const chatB=btn('','💬 채팅',()=>setState({mateView:'chat',chatRoomId:`${m.id}_${a.id}`}));
-          css(chatB,{padding:'7px 13px',borderRadius:'9px',border:'none',background:'#FF7E36',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer'});
+          css(chatB,{flex:'1',padding:'12px',borderRadius:'10px',border:'none',background:'#FF7E36',color:'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer'});
           ap(btns2,tag,chatB);
           btns2.style.opacity='1';
           const pending=m.applicants.filter(x=>x.status==='pending').length;
@@ -3460,10 +3552,10 @@ function buildMateDetail(){
 
       if(a.status==='accepted'){
         const tag=div('');
-        css(tag,{fontSize:'12px',fontWeight:'700',color:'#4CAF50',background:'#f0faf0',padding:'7px 12px',borderRadius:'9px'});
+        css(tag,{flex:'1',textAlign:'center',fontSize:'13px',fontWeight:'700',color:'#4CAF50',background:'#f0faf0',padding:'12px',borderRadius:'10px'});
         setText(tag,'함께하기 ✓');
         const chatB=btn('','💬 채팅',()=>setState({mateView:'chat',chatRoomId:`${m.id}_${a.id}`}));
-        css(chatB,{padding:'7px 13px',borderRadius:'9px',border:'none',background:'#FF7E36',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer'});
+        css(chatB,{flex:'1',padding:'12px',borderRadius:'10px',border:'none',background:'#FF7E36',color:'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer'});
         ap(btns2,tag,chatB);
       } else {
         const accB=btn('','함께하기',()=>{
@@ -3476,8 +3568,8 @@ function buildMateDetail(){
             {applicants:m.applicants, filledSlots:m.filledSlots},{merge:true}).catch(()=>{}); }catch(e){}
           setTimeout(switchToAccepted,80);
         });
-        css(accB,{padding:'8px 14px',borderRadius:'9px',border:'none',
-          background:'#FF7E36',color:'#fff',fontSize:'12px',fontWeight:'700',cursor:'pointer',
+        css(accB,{flex:'1',padding:'12px',borderRadius:'10px',border:'none',
+          background:'#FF7E36',color:'#fff',fontSize:'13px',fontWeight:'700',cursor:'pointer',
           transition:'opacity .15s,transform .15s'});
         const rejB=btn('','다음에 만나요',()=>{
           rejB.disabled=true;
@@ -3490,11 +3582,11 @@ function buildMateDetail(){
             if(appSTitle) setText(appSTitle,`신청자 ${m.applicants.length}명${pending>0?' · 대기 '+pending+'명':''}`);
           },220);
         });
-        css(rejB,{padding:'8px 12px',borderRadius:'9px',border:'1px solid #e5e6eb',
-          background:'#fff',color:'#868b94',fontSize:'12px',fontWeight:'600',cursor:'pointer'});
+        css(rejB,{flex:'1',padding:'12px',borderRadius:'10px',border:'1px solid #e5e6eb',
+          background:'#fff',color:'#868b94',fontSize:'13px',fontWeight:'600',cursor:'pointer'});
         ap(btns2,accB,rejB);
       }
-      ap(card,av2,info2,btns2);appSec.appendChild(card);
+      card.appendChild(btns2);appSec.appendChild(card);
     });
     body.appendChild(appSec);
   }
@@ -10587,7 +10679,12 @@ function buildNotifPanel(){
       const item=div(`notif-item${n.unread?' unread':''}`);
       item.onclick=()=>{
         S.notifications=S.notifications.map(x=>x.id===n.id?{...x,unread:false}:x);
-        setState({showNotif:true});
+        if(n.postId && S.mates.find(x=>x.id===n.postId)){
+          // 관련 게시물로 바로 이동
+          setState({showNotif:false,tab:'chat',chatTab:'동행',mateView:'detail',selectedMate:n.postId,item:null,sub:null});
+        } else {
+          setState({showNotif:true});
+        }
       };
 
       const iconWrap=div('notif-icon-wrap');
