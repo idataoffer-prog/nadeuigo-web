@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722H';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260723A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -8567,7 +8567,7 @@ function buildSettingsPage(){
     fsBtns.appendChild(fb);
   });
   const fsHint=div('');css(fsHint,{fontSize:'11px',color:'#94a3b8',marginTop:'10px'});
-  setText(fsHint,'화면 전체가 선택한 크기에 맞춰 조정돼요.');
+  setText(fsHint,'목록과 내용 글자가 선택한 크기로 조정돼요.');
   ap(fsRow,fsLabel,fsBtns,fsHint);
   scroll.appendChild(fsRow);
 
@@ -11597,6 +11597,7 @@ function loadScriptOnce(src){
     localStorage.setItem('nadeuigo_user', JSON.stringify(user));
     loadUserData(); // 이 계정의 누적 데이터 불러오기 (처음이면 전부 0)
     (S.mates||[]).forEach(mm=>{ mm.isMe = !!(mm.authorUid && mm.authorUid === user.uid); });
+    if(window.registerPushToken) window.registerPushToken(); // 푸시 토큰 연결
     render();
     // 환영 토스트
     const toast = document.createElement('div');
@@ -11726,16 +11727,51 @@ function loadScriptOnce(src){
     }
   }
 
+  // ── 푸시 토큰 등록: 앱(네이티브)이 전달한 토큰을 로그인 계정에 연결
+  window.registerPushToken = function(){
+    try{
+      if(!window.__pushToken || !S.user) return;
+      const _reg = () => {
+        if(!db) return;
+        db.collection('push_tokens').doc(S.user.uid).set({
+          uid: S.user.uid,
+          name: S.user.name || '',
+          token: window.__pushToken,
+          updatedAt: new Date().toISOString()
+        }, {merge:true}).then(()=>{
+          console.log('[나들이go] 푸시 토큰 등록 완료');
+        }).catch(()=>{});
+      };
+      if(db) _reg();
+      else waitForSdk(() => typeof db !== 'undefined' && db, 8000).then(_reg);
+    }catch(e){}
+  };
+
   // ── 글자 크기 설정 적용 (설정에서 변경 가능)
+  // 화면 전체가 아닌 '내용 영역'만 확대해서 상단바·하단 네비는 항상 보이게 함
   window.applyFontScale = function(v){
     try{
-      document.body.style.zoom = v;
       localStorage.setItem('nadeuigo_fontscale', String(v));
+      document.body.style.zoom = ''; // 이전 방식 잔재 제거
+      const st0 = document.getElementById('fontscale-style');
+      // 앱: 네이티브로 '글자만' 확대 (레이아웃·버튼 위치 그대로)
+      if(window.ReactNativeWebView){
+        if(st0) st0.textContent = ''; // 화면 확대 방식은 사용 안 함
+        window.ReactNativeWebView.postMessage(JSON.stringify({type:'font-scale', value:v}));
+        return;
+      }
+      // 브라우저: 스크롤 내용 영역만 확대 (폴백)
+      let st = st0;
+      if(!st){ st = document.createElement('style'); st.id = 'fontscale-style'; document.head.appendChild(st); }
+      st.textContent = (v === 1) ? '' : '.scroll-area, .cal-grid, .notif-body { zoom: ' + v + '; }';
     }catch(e){}
   };
   try{
+    document.body.style.zoom = ''; // 이전 버전에서 저장된 전체 확대 해제
     const savedScale = parseFloat(localStorage.getItem('nadeuigo_fontscale'));
-    if(savedScale && savedScale >= 0.8 && savedScale <= 1.4) document.body.style.zoom = savedScale;
+    if(savedScale && savedScale >= 0.8 && savedScale <= 1.4 && savedScale !== 1){
+      window.applyFontScale(savedScale);
+    }
   }catch(e){}
 
   // ── 앱 시작: 로그인 없이 바로 둘러보기 가능 (쿠팡 스타일)
@@ -11745,6 +11781,7 @@ function loadScriptOnce(src){
     if(savedUser){ S.user = JSON.parse(savedUser); }
   }catch(e){ S.user = null; }
   loadUserData(); // 계정별 누적 데이터(스탬프·쿠폰 등) 복원
+  if(S.user && window.registerPushToken) setTimeout(()=>window.registerPushToken(), 2000); // 푸시 토큰 연결
   window.showLoginScreen = buildLoginScreen; // 마이고 탭에서 호출용
 
   document.addEventListener('touchstart',e=>{
