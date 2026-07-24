@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260722A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260722B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1698,6 +1698,7 @@ function loadMatePosts(){
                   title:'새 동행 신청이 도착했어요! 🙋',
                   desc:(na.name?na.name+'님이 ':'')+'"'+(d.title||'내 모집글')+'"에 신청했어요',time:'방금 전'});
                 gotNewApplicant = true;
+                showTopBanner('🙋 ' + (na.name||'누군가') + '님이 동행을 신청했어요!');
               }
             }
           });
@@ -3557,7 +3558,7 @@ function buildMateDetail(){
     css(applyBtn,{...base,background:'#f2f3f5',color:'#868b94',boxShadow:'none',cursor:'default'});
     applyBtn.disabled=true;
   } else if(isAccepted){
-    applyBtn=btn('','💬 채팅방 입장하기',()=>setState({mateView:'chat',chatRoomId:`${m.id}_me`}));
+    applyBtn=btn('','💬 채팅방 입장하기',()=>setState({mateView:'chat',chatRoomId:`${m.id}_${(S.user&&S.user.uid)||'me'}`}));
     css(applyBtn,{...base,background:'#FF7E36',color:'#fff',boxShadow:'0 8px 24px rgba(255,126,54,.35)'});
   } else if(isApplied){
     applyBtn=btn('','신청 완료 · 수락 대기 중');
@@ -3774,20 +3775,63 @@ function buildMateWrite(){
   return page;
 }
 
+// ── 화면 상단 배너 알림 (새 신청 등 즉시 표시)
+function showTopBanner(txt){
+  try{
+    const old=document.getElementById('top-banner'); if(old) old.remove();
+    const b=document.createElement('div');
+    b.id='top-banner';
+    b.style.cssText='position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:14px;right:14px;z-index:99997;'
+      +'background:#0f172a;color:#fff;padding:14px 18px;border-radius:14px;font-size:13px;font-weight:700;'
+      +'box-shadow:0 8px 24px rgba(0,0,0,.3);display:flex;align-items:center;gap:8px;cursor:pointer;'
+      +'transform:translateY(-80px);transition:transform .25s ease;';
+    b.textContent=txt;
+    b.onclick=()=>{ b.remove(); setState({showNotif:true}); };
+    document.body.appendChild(b);
+    requestAnimationFrame(()=>{ b.style.transform='translateY(0)'; });
+    setTimeout(()=>{ b.style.transform='translateY(-80px)'; setTimeout(()=>b.remove(),300); }, 3500);
+  }catch(e){}
+}
+
+// ── 채팅 실시간 동기화 (Firestore mate_chats)
+function fmtChatTime(iso){
+  try{
+    const t=new Date(iso); const hh=t.getHours(), mm=String(t.getMinutes()).padStart(2,'0');
+    return (hh>11?'오후':'오전')+' '+(hh>12?hh-12:(hh===0?12:hh))+':'+mm;
+  }catch(e){ return ''; }
+}
+function subscribeChatRoom(roomId){
+  if(window._chatSubRoom === roomId) return;
+  if(window._chatUnsub){ try{ window._chatUnsub(); }catch(e){} window._chatUnsub=null; }
+  window._chatSubRoom = roomId;
+  if(!db || !roomId) return;
+  try{
+    window._chatUnsub = db.collection('mate_chats').where('roomId','==',roomId)
+      .onSnapshot(snap => {
+        const arr=[];
+        snap.forEach(doc => arr.push(doc.data()));
+        arr.sort((a,b)=>String(a.createdAt||'').localeCompare(String(b.createdAt||'')));
+        const myUid = S.user && S.user.uid;
+        S.chatMessages[roomId] = arr.map((d,i)=>({
+          id: d.createdAt||i,
+          from: d.senderUid === myUid ? 'mine' : 'other',
+          name: d.senderName || '상대',
+          text: d.text || '',
+          time: fmtChatTime(d.createdAt),
+          color: d.color || '#FF7E36'
+        }));
+        if(S.chatRoomId === roomId && S.mateView === 'chat') render();
+      }, err => console.warn('[나들이go] 채팅 구독 실패:', err.message));
+  }catch(e){}
+}
+
 function buildMateChat(){
   const roomId=S.chatRoomId;
+  subscribeChatRoom(roomId); // 실시간 메시지 수신
   if(!S.chatMessages[roomId]) S.chatMessages[roomId]=[];
   const msgs=S.chatMessages[roomId];
   const m=S.mates.find(x=>x.id===parseInt(roomId));
   const partner=m?.applicants.find(a=>a.status==='accepted');
-
-  if(!msgs.length && m && partner){
-    msgs.push(
-      {id:1,from:'other',name:partner.name,text:'안녕하세요! 동행 신청했어요 😊',time:'오후 1:00',color:partner.color},
-      {id:2,from:'mine',text:'반가워요! 당일 여의나루역 2번 출구에서 봬요~',time:'오후 1:01'},
-      {id:3,from:'other',name:partner.name,text:'네! 혹시 사진 보정 잘 하세요? 저는 사진 찍는 거 좋아해서요 😄',time:'오후 1:02',color:partner.color},
-    );
-  }
 
   const page=div('chat-page');
   if(!S._back) page.classList.add('slide-right');
@@ -3908,6 +3952,8 @@ function buildMateChat(){
     fontFamily:'inherit',color:'#212124',
     transition:'border-color .15s,background .15s'
   });
+  inp.value=S.chatInput||'';
+  inp.oninput=e=>{ S.chatInput=e.target.value; };
   inp.onfocus=()=>css(inp,{borderColor:'#FF7E36',background:'#fff'});
   inp.onblur=()=>css(inp,{borderColor:'#e5e6eb',background:'#f9fafa'});
 
@@ -3919,6 +3965,13 @@ function buildMateChat(){
     const newMsg={id:Date.now(),from:'mine',text,
       time:`${hh>11?'오후':'오전'} ${hh>12?hh-12:hh===0?12:hh}:${mm}`};
     msgs.push(newMsg);
+    // Firestore 전송 → 상대방 폰에 실시간 도착
+    try{ if(db) db.collection('mate_chats').add({
+      roomId:roomId, text:text,
+      senderUid:(S.user&&S.user.uid)||'', senderName:(S.user&&S.user.name)||'익명',
+      color:'#FF7E36', createdAt:new Date().toISOString()
+    }).catch(()=>{}); }catch(e){}
+    S.chatInput='';
     const bubble=makeBubble(newMsg);
     bubble.style.opacity='0';bubble.style.transform='translateY(8px)';
     body.appendChild(bubble);
