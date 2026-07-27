@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260723A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260723B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1178,7 +1178,6 @@ const INFO={
       {icon:'🚇',label:'지하철',desc:'여의나루역 1번 출구 (도보 5분)',status:'good'},
       {icon:'🚌',label:'셔틀버스',desc:'여의나루역 ↔ 축제장 (10분 간격)',status:'good'},
       {icon:'🚲',label:'공공자전거',desc:'여의나루 따릉이 대여소',status:'good'},
-      {icon:'🚗',label:'카풀',desc:'나들이go 카풀 모집 중',status:'good'},
     ],
     tip:'대중교통 이용 시 여의나루역 1번 출구가 가장 가까워요.',
   },
@@ -3110,7 +3109,7 @@ function buildChat(){
     });
     return c;
   })();
-  [['동행','동행 모집'],['채팅',_myRoomCount>0?`내 채팅 ${_myRoomCount}`:'내 채팅'],['카풀','카풀'],['자유','자유글']].forEach(([id,label])=>{
+  [['동행','동행 모집'],['채팅',_myRoomCount>0?`내 채팅 ${_myRoomCount}`:'내 채팅'],['자유','자유글']].forEach(([id,label])=>{
     const b=btn(`sub-tab${S.chatTab===id?' active':''}`,label,()=>setState({chatTab:id}));
     tabs.appendChild(b);
   });
@@ -3210,7 +3209,7 @@ function buildChat(){
     fab.appendChild(icon('plus'));
 
     ap(wrap,hdr,filterBar,main,fab);
-  } else if(S.chatTab==='카풀'){
+  } else if(false){ // 카풀 기능 제거됨
     // 카풀 탭
     const main=div('scroll-area');css(main,{padding:'16px 16px 100px',background:'#f8fafc'});
 
@@ -10131,19 +10130,14 @@ function buildDnaModal(){
         const cc2=mf.filter(m=>m.hasCarpool).length;
         const mc2=mf.length;
         const chipR=div('');css(chipR,{display:'flex',gap:'5px',flexWrap:'wrap',marginBottom:'5px'});
-        const cp=div('');css(cp,{fontSize:'12px',fontWeight:'700',
-          color:cc2>0?'#7c3aed':'#9ca3af',
-          background:cc2>0?'rgba(124,58,237,.08)':'rgba(156,163,175,.07)',
-          border:`1px solid ${cc2>0?'rgba(124,58,237,.25)':'rgba(156,163,175,.18)'}`,
-          padding:'3px 10px',borderRadius:'9999px'});
-        setText(cp,'🚗 카풀 '+(cc2>0?cc2+'명':'없음'));
+        const cp=null; // 카풀 기능 제거됨
         const mp=div('');css(mp,{fontSize:'12px',fontWeight:'700',
           color:mc2>0?CORAL:'#9ca3af',
           background:mc2>0?'rgba(255,92,92,.08)':'rgba(156,163,175,.07)',
           border:`1px solid ${mc2>0?'rgba(255,92,92,.25)':'rgba(156,163,175,.18)'}`,
           padding:'3px 10px',borderRadius:'9999px'});
         setText(mp,'🤝 동행 '+(mc2>0?mc2+'팀':'없음'));
-        ap(chipR,cp,mp);
+        ap(chipR,mp);
         // 축제 특징
         const tagDescMap={
           '벚꽃명소':'🌸 봄 벚꽃 절정 시즌 · 연인·친구와 함께 나들이 추천 · 야간 조명도 아름다워요',
