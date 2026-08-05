@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260723B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260805A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -858,7 +858,7 @@ let S={
        {category:'상설행사',date:'',time:'09:00',endTime:'22:00',title:"장미터널 야간 조명",loc:'장미터널',price:'무료',audience:'전체',reservation:'자유참여'},
        {category:'상설행사',date:'',time:'10:00',endTime:'18:00',title:"포토존 운영",loc:'축제장 전역',price:'무료',audience:'전체',reservation:'자유참여'}
      ],
-     reviews:[{user:"여행자K",star:5,text:"장미터널이 진짜 예뻐요. 야간 조명도 좋음!"},{user:"꽃송이",star:4,text:"사람 많지만 볼 만함"}]},
+     reviews:[]},
 
     {id:102,title:"하동 야생차문화축제",loc:"경남 하동군 화개면",date:"05.16 - 05.19",region:'경남',rating:4.6,
      lat:35.2090,lng:127.6505,
@@ -872,19 +872,19 @@ let S={
      img:"https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=600&q=80",
      tag:"꽃축제",mx:'38%',my:'25%',cong:75,
      idata:true,
-     reviews:[{user:"가든러버",star:5,text:"5개월간 진행하는 대형 박람회! 시민정원 작품들이 인상적이에요."}]},
+     reviews:[]},
 
     {id:104,title:"강릉 단오제",loc:"강원 강릉시 남대천",date:"06.07 - 06.14",region:'강원',rating:4.5,
      lat:37.7519,lng:128.8761,
      img:"https://images.unsplash.com/photo-1547150469-46fa18a02dd6?auto=format&fit=crop&w=600&q=80",
      tag:"전통문화",mx:'56%',my:'18%',cong:60,
-     reviews:[{user:"전통매니아",star:5,text:"유네스코 인류무형문화유산! 단오굿이 압권."}]},
+     reviews:[]},
 
     {id:105,title:"보령 머드축제",loc:"충남 보령시 대천해수욕장",date:"07.17 - 08.02",region:'충남',rating:4.7,
      lat:36.3328,lng:126.5126,
      img:"https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80",
      tag:"여름축제",mx:'33%',my:'45%',cong:90,
-     reviews:[{user:"머드킹",star:5,text:"여름엔 무조건 가야됨! 외국인 관광객도 엄청 많아요."}]},
+     reviews:[]},
 
     {id:106,title:"무주 산골영화제",loc:"전북 무주군 등나무운동장",date:"06.05 - 06.09",region:'전북',rating:4.4,
      lat:36.0073,lng:127.6610,
@@ -896,7 +896,7 @@ let S={
      lat:35.1855,lng:128.9745,
      img:"https://images.unsplash.com/photo-1459749411175-04bf5292ceea?auto=format&fit=crop&w=600&q=80",
      tag:"음악축제",mx:'72%',my:'78%',cong:85,
-     reviews:[{user:"락스타",star:5,text:"국내 최대 락 페스티벌! 라인업이 미쳤어요."}]},
+     reviews:[]},
 
     {id:108,title:"여주 도자기축제",loc:"경기 여주시 신륵사관광지",date:"05.02 - 05.18",region:'경기',rating:4.5,
      lat:37.2980,lng:127.6347,
@@ -910,7 +910,7 @@ let S={
      img:"https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?auto=format&fit=crop&w=600&q=80",
      tag:"가족축제",mx:'42%',my:'82%',cong:40,
      idata:true,
-     reviews:[{user:"공룡아빠",star:5,text:"아이들이 정말 좋아해요. 공룡 화석도 직접 발굴 체험 가능."}]},
+     reviews:[]},
 
     {id:110,title:"거제 정원박람회",loc:"경남 거제시",date:"05.10 - 06.30",region:'경남',rating:4.6,
      lat:34.8806,lng:128.6213,
@@ -930,7 +930,7 @@ let S={
      lat:37.8813,lng:127.7298,
      img:"https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
      tag:"문화예술",mx:'48%',my:'22%',cong:55,
-     reviews:[{user:"마임팬",star:5,text:"30년 넘은 축제! 거리공연 도시 전체가 무대됨."}]},
+     reviews:[]},
 
     {id:113,title:"안동 국제탈춤페스티벌",loc:"경북 안동시 탈춤공원",date:"09.25 - 10.04",region:'경북',rating:4.7,
      lat:36.5684,lng:128.7294,
@@ -942,7 +942,7 @@ let S={
      lat:35.1799,lng:128.0850,
      img:"https://images.unsplash.com/photo-1572297870735-9b4ae3b71ad7?auto=format&fit=crop&w=600&q=80",
      tag:"야간축제",mx:'62%',my:'72%',cong:80,
-     reviews:[{user:"야경수집가",star:5,text:"강 위에 떠다니는 유등이 환상적!"}]},
+     reviews:[]},
 
     {id:115,title:"제주 들불축제",loc:"제주 새별오름",date:"03.06 - 03.09",region:'제주',rating:4.6,
      lat:33.3617,lng:126.3568,
@@ -954,7 +954,7 @@ let S={
      lat:38.1064,lng:127.7081,
      img:"https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&w=600&q=80",
      tag:"겨울축제",mx:'50%',my:'14%',cong:75,
-     reviews:[{user:"겨울매니아",star:5,text:"얼음낚시는 진짜 못 잊을 경험!"}]},
+     reviews:[]},
 
     {id:117,title:"함평 나비대축제",loc:"전남 함평군 함평엑스포공원",date:"04.25 - 05.06",region:'전남',rating:4.4,
      lat:35.0666,lng:126.5165,
@@ -972,13 +972,13 @@ let S={
      lat:36.3279,lng:127.4275,
      img:"https://images.unsplash.com/photo-1493514789931-586cb221d7a7?auto=format&fit=crop&w=600&q=80",
      tag:"야간축제",mx:'45%',my:'48%',cong:70,
-     reviews:[{user:"대전토박이",star:5,text:"심야까지 놀 수 있는 도심 축제!"}]},
+     reviews:[]},
 
     {id:120,title:"서울세계불꽃축제",loc:"서울 여의도 한강공원",date:"10.04 - 10.04",region:'서울',rating:4.9,
      lat:37.5285,lng:126.9327,
      img:"https://images.unsplash.com/photo-1530021232320-687d8e3dba54?auto=format&fit=crop&w=600&q=80",
      tag:"야간축제",mx:'38%',my:'26%',cong:95,
-     reviews:[{user:"폭죽덕후",star:5,text:"한국 최대 불꽃축제! 한강 명당 잡는 게 관건"}]}
+     reviews:[]}
   ]
 };
 
@@ -1571,6 +1571,11 @@ function showLoginPrompt(msg){
 
 function setState(p, _opts={}){
   if(p.chatRoomId === null) window._chatAnimRoom = null; // 채팅방 나가면 다음 입장 시 애니메이션 복원
+  // 후기 작성은 로그인 필요
+  if(p.sub === 'write-review' && !S.user){
+    showLoginPrompt('후기를 작성하려면 로그인이 필요해요.');
+    return;
+  }
   // 타로점·동행글 작성·채팅방 입장은 로그인해야 이용 가능 → 안내 팝업
   if((p.showDna === true || p.mateView === 'write' || (p.chatRoomId && p.chatRoomId !== null)) && !S.user){
     showLoginPrompt(p.mateView === 'write'
@@ -1589,6 +1594,10 @@ function setState(p, _opts={}){
   Object.assign(S,p);
   // 누적 데이터(스탬프·쿠폰사용·찜)를 계정별로 저장
   saveUserData();
+  // 축제 상세 진입 시 실측 유동인구 갱신
+  if(p.item && p.item.vestorDevice){
+    fetchTrafficForFestival(p.item).then(ok => { if(ok && S.item === p.item) render(); }).catch(()=>{});
+  }
   const next=JSON.stringify(_stateSnapshot());
   // 의미 있는 내비게이션이면 pushState
   if(!_opts._pop && !_opts._replace && prev!==next){
@@ -1664,6 +1673,60 @@ function saveMatePost(m){
     };
     db.collection('mate_posts').doc(String(m.id)).set(doc).catch(()=>{});
   }catch(e){}
+}
+
+// ─── 후기(리뷰): Firestore 영구 저장 ─────────────
+async function loadReviews(){
+  try{
+    if(!db) return;
+    const snap = await db.collection('reviews').orderBy('createdAt','desc').limit(500).get();
+    const byFest = {};
+    snap.forEach(doc => {
+      const d = doc.data();
+      const k = String(d.festivalId||'');
+      if(!byFest[k]) byFest[k] = [];
+      byFest[k].push({ id: doc.id, user: d.user||'익명', uid: d.uid||'', star: d.star||5, text: d.text||'', createdAt: d.createdAt||'' });
+    });
+    S.festivals.forEach(f => {
+      const list = byFest[String(f.id)] || [];
+      f.reviews = list;
+      if(list.length){
+        f.rating = Math.round(list.reduce((s,r)=>s+(r.star||5),0) / list.length * 10) / 10;
+      }
+    });
+    console.log('[나들이go] 후기', snap.size, '개 로드');
+  }catch(e){ console.warn('[나들이go] 후기 로드 실패:', e.message); }
+}
+function recalcFestRating(f){
+  const list = f.reviews||[];
+  if(list.length) f.rating = Math.round(list.reduce((s,r)=>s+(r.star||5),0) / list.length * 10) / 10;
+}
+
+// ─── 실측 유동인구 (VESTOR 스마트카운터 연동, 5분 캐시) ─────────────
+async function fetchTrafficForFestival(f){
+  if(!f || !f.vestorDevice) return false;
+  const key = 'tf_' + f.vestorDevice;
+  try{
+    const raw = localStorage.getItem(key);
+    if(raw){
+      const c = JSON.parse(raw);
+      if(c && c.data && (Date.now() - c.t) < 5*60*1000){
+        f._traffic = c.data;
+        if(c.data.todayIn > 0) f.cong = c.data.congestion;
+        return true;
+      }
+    }
+  }catch(e){}
+  try{
+    const res = await fetch('https://vestor.kr/api/public/festival-traffic?device=' + encodeURIComponent(f.vestorDevice));
+    const d = await res.json();
+    if(!d || !d.ok) return false;
+    f._traffic = { todayIn: d.todayIn||0, congestion: d.congestion||0, hours: d.hours||[] };
+    if((d.todayIn||0) > 0 && typeof d.congestion === 'number') f.cong = d.congestion; // 실측값으로 교체
+    try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
+    console.log('[나들이go] 실측 유동인구 로드: ' + f.title + ' ' + d.todayIn + '명');
+    return true;
+  }catch(e){ return false; }
 }
 
 // 동행글 실시간 구독 (신규 글·신청·수락이 모든 폰에 즉시 반영)
@@ -3109,7 +3172,7 @@ function buildChat(){
     });
     return c;
   })();
-  [['동행','동행 모집'],['채팅',_myRoomCount>0?`내 채팅 ${_myRoomCount}`:'내 채팅'],['자유','자유글']].forEach(([id,label])=>{
+  [['동행','동행 모집'],['채팅',_myRoomCount>0?`내 채팅 ${_myRoomCount}`:'내 채팅']].forEach(([id,label])=>{
     const b=btn(`sub-tab${S.chatTab===id?' active':''}`,label,()=>setState({chatTab:id}));
     tabs.appendChild(b);
   });
@@ -4361,7 +4424,7 @@ function buildMy(){
   const menu=div('menu-list');css(menu,{background:'#fff',marginTop:'0'});
 
   // 내 활동 카운트
-  const myReviewCount=S.festivals.reduce((n,f)=>n+(f.reviews||[]).filter(r=>r.user==='나').length,0);
+  const myReviewCount=S.festivals.reduce((n,f)=>n+(f.reviews||[]).filter(r=>S.user&&r.uid&&r.uid===S.user.uid).length,0);
   const myPostCount=S.mates.filter(m=>m.isMe).length;
 
   [{ic:'heart2',lbl:'관심 축제 목록',action:'liked',badge:S.likedFests.length,badgeColor:'#ef4444',badgeBg:'#fff0f0'},
@@ -7531,6 +7594,41 @@ function buildSubCong(){
   ap(hdr,backBtn(()=>goBack({sub:null})),div('modal-title','혼잡도 분석'),_sp2);
   const body=div('scroll-area');css(body,{background:'#f8fafc'});
 
+  // ── ⚡ 실측 데이터 섹션 (VESTOR 스마트카운터 연동 축제)
+  const tf = S.item && S.item._traffic;
+  if(tf && (tf.todayIn > 0 || (tf.hours||[]).length > 0)){
+    const ms=div('');css(ms,{background:'#fff',margin:'16px 16px 0',padding:'20px',borderRadius:'18px',
+      border:'1.5px solid #fed7aa',boxShadow:'0 2px 10px rgba(239,130,0,.08)'});
+    const mh=div('');css(mh,{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'8px'});
+    const mt=div('');css(mt,{fontSize:'14px',fontWeight:'800',color:'#0f172a'});setText(mt,'🔴 실시간 방문 현황');
+    const mb=div('');css(mb,{fontSize:'10px',fontWeight:'800',color:'#ef8200',background:'#fff7ed',padding:'4px 9px',borderRadius:'9999px'});
+    setText(mb,'⚡ 스마트카운터 실측');
+    ap(mh,mt,mb);
+    const mv=div('');css(mv,{fontSize:'28px',fontWeight:'900',color:'#ef8200',marginBottom:'2px'});
+    setText(mv,(tf.todayIn||0).toLocaleString()+'명');
+    const ml=div('');css(ml,{fontSize:'12px',color:'#94a3b8',marginBottom:'16px'});
+    setText(ml,'오늘 방문객 · 현장 계수기 집계');
+    // 시간대별 방문 차트
+    const hrs=tf.hours||[];
+    const maxIn=Math.max(1, ...hrs.map(h=>h.in||0));
+    const ch=div('');css(ch,{display:'flex',alignItems:'flex-end',gap:'3px',height:'96px'});
+    hrs.forEach(h=>{
+      const col=div('');css(col,{flex:'1',display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',height:'100%',justifyContent:'flex-end',minWidth:'0'});
+      const bar=div('');css(bar,{width:'100%',borderRadius:'4px 4px 0 0',
+        background:(h.in===maxIn&&h.in>0)?'#ef8200':'#fed7aa',
+        height:Math.max(4, Math.round((h.in||0)/maxIn*68))+'px'});
+      bar.title=h.h+'시 '+(h.in||0)+'명';
+      const lb=div('');css(lb,{fontSize:'8px',color:'#94a3b8',whiteSpace:'nowrap'});
+      setText(lb,(h.h%3===0)?h.h+'시':'');
+      ap(col,bar,lb);
+      ch.appendChild(col);
+    });
+    const chLbl=div('');css(chLbl,{fontSize:'11px',fontWeight:'700',color:'#64748b',marginBottom:'8px'});
+    setText(chLbl,'시간대별 방문 추이');
+    ap(ms,mh,mv,ml,chLbl,ch);
+    body.appendChild(ms);
+  }
+
   // 히어로 섹션 (현재 상태 요약)
   const congVal=S.item?.cong||92;
   const statusInfo=congVal>90
@@ -7633,7 +7731,29 @@ function buildSubReviews(){
       const si=icon('star');css(si,{width:'12px',height:'12px',stroke:'#f59e0b',fill:'#f59e0b'});
       ap(rs,si,`${r.star}`);ap(rh,ru,rs);
       const rt=el('p','');css(rt,{fontSize:'13px',lineHeight:'1.6',color:'#475569',margin:'0'});setText(rt,r.text);
-      ap(card,rh,rt);body.appendChild(card);
+      ap(card,rh,rt);
+      // 내가 쓴 후기: 수정·삭제 버튼
+      if(S.user && r.uid && r.uid===S.user.uid){
+        const actRow=div('');css(actRow,{display:'flex',gap:'8px',marginTop:'12px'});
+        const editB=btn('','✏️ 수정',()=>{
+          S._editReviewId=r.id; S._editReviewText=r.text;
+          setState({sub:'write-review',rating:r.star});
+        });
+        css(editB,{flex:'1',padding:'9px',borderRadius:'9px',border:'1px solid #e2e8f0',background:'#fff',color:'#475569',fontSize:'12px',fontWeight:'700',cursor:'pointer'});
+        const delB=btn('','🗑 삭제',async ()=>{
+          if(!confirm('이 후기를 삭제할까요?')) return;
+          try{
+            if(db && String(r.id).indexOf('local_')!==0) await db.collection('reviews').doc(r.id).delete();
+            const f=S.festivals.find(x=>x.id===S.item.id);
+            if(f){ f.reviews=(f.reviews||[]).filter(x=>x.id!==r.id); recalcFestRating(f); }
+            render();
+          }catch(e){ alert('삭제 중 오류가 났어요.'); }
+        });
+        css(delB,{flex:'1',padding:'9px',borderRadius:'9px',border:'none',background:'#fef2f2',color:'#dc2626',fontSize:'12px',fontWeight:'700',cursor:'pointer'});
+        ap(actRow,editB,delB);
+        card.appendChild(actRow);
+      }
+      body.appendChild(card);
     });
   }
   ap(modal,hdr,body);
@@ -7647,12 +7767,12 @@ function buildSubWrite(){
     const ta=modal.querySelector('textarea');
     const text=ta?ta.value.trim():'';
     if(!text)return;
-    const updated=S.festivals.map(f=>f.id===S.item.id?{...f,reviews:[{user:'나',star:S.rating,text},...f.reviews]}:f);
+    const updated=S.festivals.map(f=>f.id===S.item.id?{...f,reviews:[]}:f);
     setState({festivals:updated,item:updated.find(f=>f.id===S.item.id),sub:null,rating:5});
   };
 
   const hdr=div('modal-header');
-  ap(hdr,closeBtn(()=>goBack({sub:null})),div('modal-title','리뷰 쓰기'),btn('text-btn text-btn-blue','등록',submitFn));
+  ap(hdr,closeBtn(()=>{S._editReviewId=null;S._editReviewText='';goBack({sub:null});}),div('modal-title',S._editReviewId?'리뷰 수정':'리뷰 쓰기'),btn('text-btn text-btn-blue',S._editReviewId?'수정':'등록',submitFn));
 
   const body=div('scroll-area');css(body,{padding:'28px',background:'#fff'});
   const top=div('');css(top,{textAlign:'center',marginBottom:'32px'});
@@ -7672,6 +7792,7 @@ function buildSubWrite(){
 
   const ta=el('textarea','review-ta');
   ta.placeholder='방문 후기를 자유롭게 남겨주세요.';
+  if(S._editReviewId && S._editReviewText) ta.value=S._editReviewText;
 
   ap(body,top,ta);ap(modal,hdr,body);
   return modal;
@@ -8850,7 +8971,7 @@ function buildMyReviewsPage(){
   const myReviews=[];
   S.festivals.forEach(f=>{
     (f.reviews||[]).forEach(r=>{
-      if(r.user==='나') myReviews.push({...r,festTitle:f.title,festImg:f.img,festId:f.id});
+      if(S.user&&r.uid&&r.uid===S.user.uid) myReviews.push({...r,festTitle:f.title,festImg:f.img,festId:f.id});
     });
   });
 
@@ -10846,6 +10967,7 @@ function fsToFestival(doc){
     my: d.my || '50%',
     cong: d.cong != null ? d.cong : 50,
     idata: !!d.idata,
+    vestorDevice: d.vestorDevice || '',
     reviews: d.reviews || [],
     programs: Array.isArray(d.programs) ? d.programs : [],
     coupons: Array.isArray(d.coupons) ? d.coupons : [],
@@ -11365,9 +11487,17 @@ function loadScriptOnce(src){
     loadWeeklyViews().then(() => { if(S.user && S.tab === 'home' && !S.item) render(); });
     // 동행 모집글 로드 (모든 사용자 공유, 백그라운드)
     loadMatePosts().then(() => { if(S.tab === 'chat') render(); });
+    // 후기 로드 (모든 사용자 공유, 백그라운드)
+    loadReviews().then(() => { if(S.item || S.sub === 'reviews') render(); });
     // 날씨 미리 불러오기 (상세 진입 시 즉시 표시) — 0.3초 간격으로 순차 요청
     (S.festivals || []).slice(0, 15).forEach((f, i) => {
       setTimeout(() => { fetchWeatherForFestival(f).catch(()=>{}); }, i * 300);
+    });
+    // 실측 유동인구 미리 불러오기 (VESTOR 계수기 연동 축제만)
+    (S.festivals || []).filter(f => f.vestorDevice).forEach((f, i) => {
+      setTimeout(() => {
+        fetchTrafficForFestival(f).then(ok => { if(ok && S.tab === 'home' && !S.item) render(); }).catch(()=>{});
+      }, i * 200);
     });
     // 카테고리 로드
     await loadCategoriesFromFirestore();
