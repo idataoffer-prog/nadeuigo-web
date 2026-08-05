@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260805A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260805B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1702,10 +1702,26 @@ function recalcFestRating(f){
   if(list.length) f.rating = Math.round(list.reduce((s,r)=>s+(r.star||5),0) / list.length * 10) / 10;
 }
 
-// ─── 실측 유동인구 (VESTOR 스마트카운터 연동, 5분 캐시) ─────────────
+// ─── 실측 유동인구 (VESTOR 스마트카운터 연동, 여러 장비 합산, 5분 캐시) ─────────────
+// 축제 시작일 추출 ("07.17 - 08.02" → 올해 7월 17일)
+function parseFestStartDate(f){
+  try{
+    const m = String(f.date||'').match(/(\d{4})?[.\s]*(\d{1,2})[.\/](\d{1,2})/);
+    if(!m) return null;
+    const now = new Date();
+    let y = m[1] ? parseInt(m[1],10) : now.getFullYear();
+    const mo = parseInt(m[2],10), dd = parseInt(m[3],10);
+    // 연도 미표기 + 시작월이 현재보다 많이 미래면 작년 축제로 간주하지 않고 올해 유지
+    const iso = y + '-' + String(mo).padStart(2,'0') + '-' + String(dd).padStart(2,'0');
+    return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+  }catch(e){ return null; }
+}
 async function fetchTrafficForFestival(f){
   if(!f || !f.vestorDevice) return false;
-  const key = 'tf_' + f.vestorDevice;
+  const devs = String(f.vestorDevice).split(',').map(s=>s.trim()).filter(Boolean).join(',');
+  if(!devs) return false;
+  const fromDate = parseFestStartDate(f);
+  const key = 'tf_' + devs + '_' + (fromDate||'');
   try{
     const raw = localStorage.getItem(key);
     if(raw){
@@ -1718,13 +1734,16 @@ async function fetchTrafficForFestival(f){
     }
   }catch(e){}
   try{
-    const res = await fetch('https://vestor.kr/api/public/festival-traffic?device=' + encodeURIComponent(f.vestorDevice));
+    let url = 'https://vestor.kr/api/public/festival-traffic?devices=' + encodeURIComponent(devs);
+    if(fromDate) url += '&from=' + fromDate;
+    const res = await fetch(url);
     const d = await res.json();
     if(!d || !d.ok) return false;
-    f._traffic = { todayIn: d.todayIn||0, congestion: d.congestion||0, hours: d.hours||[] };
+    f._traffic = { todayIn: d.todayIn||0, totalIn: (typeof d.totalIn==='number'?d.totalIn:null),
+                   congestion: d.congestion||0, hours: d.hours||[], deviceCount: d.deviceCount||1 };
     if((d.todayIn||0) > 0 && typeof d.congestion === 'number') f.cong = d.congestion; // 실측값으로 교체
     try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
-    console.log('[나들이go] 실측 유동인구 로드: ' + f.title + ' ' + d.todayIn + '명');
+    console.log('[나들이go] 실측 유동인구: ' + f.title + ' 오늘 ' + d.todayIn + '명 / 누적 ' + d.totalIn + '명');
     return true;
   }catch(e){ return false; }
 }
@@ -7604,10 +7623,24 @@ function buildSubCong(){
     const mb=div('');css(mb,{fontSize:'10px',fontWeight:'800',color:'#ef8200',background:'#fff7ed',padding:'4px 9px',borderRadius:'9999px'});
     setText(mb,'⚡ 스마트카운터 실측');
     ap(mh,mt,mb);
-    const mv=div('');css(mv,{fontSize:'28px',fontWeight:'900',color:'#ef8200',marginBottom:'2px'});
-    setText(mv,(tf.todayIn||0).toLocaleString()+'명');
-    const ml=div('');css(ml,{fontSize:'12px',color:'#94a3b8',marginBottom:'16px'});
-    setText(ml,'오늘 방문객 · 현장 계수기 집계');
+    // 누적 · 오늘 2단 통계
+    const statRow=div('');css(statRow,{display:'flex',gap:'10px',marginBottom:'16px'});
+    const st1=div('');css(st1,{flex:'1',background:'#fff7ed',borderRadius:'12px',padding:'12px 14px'});
+    const st1v=div('');css(st1v,{fontSize:'22px',fontWeight:'900',color:'#ef8200'});
+    setText(st1v,(tf.totalIn!=null?tf.totalIn:tf.todayIn||0).toLocaleString()+'명');
+    const st1l=div('');css(st1l,{fontSize:'11px',color:'#b45309',fontWeight:'700',marginTop:'2px'});
+    setText(st1l,tf.totalIn!=null?'축제 기간 누적 방문객':'오늘 방문객');
+    ap(st1,st1v,st1l);
+    statRow.appendChild(st1);
+    if(tf.totalIn!=null){
+      const st2=div('');css(st2,{flex:'1',background:'#f8fafc',borderRadius:'12px',padding:'12px 14px'});
+      const st2v=div('');css(st2v,{fontSize:'22px',fontWeight:'900',color:'#0f172a'});
+      setText(st2v,(tf.todayIn||0).toLocaleString()+'명');
+      const st2l=div('');css(st2l,{fontSize:'11px',color:'#64748b',fontWeight:'700',marginTop:'2px'});
+      setText(st2l,'오늘 방문객');
+      ap(st2,st2v,st2l);
+      statRow.appendChild(st2);
+    }
     // 시간대별 방문 차트
     const hrs=tf.hours||[];
     const maxIn=Math.max(1, ...hrs.map(h=>h.in||0));
@@ -7625,7 +7658,7 @@ function buildSubCong(){
     });
     const chLbl=div('');css(chLbl,{fontSize:'11px',fontWeight:'700',color:'#64748b',marginBottom:'8px'});
     setText(chLbl,'시간대별 방문 추이');
-    ap(ms,mh,mv,ml,chLbl,ch);
+    ap(ms,mh,statRow,chLbl,ch);
     body.appendChild(ms);
   }
 

@@ -970,8 +970,8 @@ function openEdit(docId){
             <span>⚡ 아이데이터(VESTOR) 운영 축제로 표시</span>
           </label>
           <div class="field" style="margin-top:8px;">
-            <label>⚡ VESTOR 계수기 장비번호 (실측 유동인구 연동)</label>
-            <input type="text" id="m-vestor-device" placeholder="예: 2424009 — 입력하면 앱에 실시간 방문객·혼잡도 표시" value="${f.vestorDevice||''}">
+            <label>⚡ VESTOR 계수기 장비번호 (실측 유동인구 연동 · 여러 대면 쉼표로 구분)</label>
+            <input type="text" id="m-vestor-device" placeholder="예: 2424009,2424008 — 모든 출입구 계수기를 합산해 앱에 표시" value="${f.vestorDevice||''}">
           </div>
         </div>
       </div>
