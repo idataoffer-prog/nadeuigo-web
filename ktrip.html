@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260805D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260805E';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7656,14 +7656,17 @@ function buildSubCong(){
     setText(chLbl,'오늘 시간대별 방문');
     const ch=div('');css(ch,{display:'flex',alignItems:'flex-end',gap:'4px',height:'72px'});
     hrs.forEach(h=>{
-      const col=div('');css(col,{flex:'1',display:'flex',flexDirection:'column',alignItems:'center',gap:'5px',height:'100%',justifyContent:'flex-end',minWidth:'0'});
+      const col=div('');css(col,{flex:'1',display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end',minWidth:'0'});
       const isPeak=(h.in===maxIn&&h.in>0);
       const isNow=(h.h===nowH);
       const bar=div('');css(bar,{width:'100%',maxWidth:'18px',borderRadius:'3px',
         background: isNow?'#ef8200':(isPeak?'#111':'#e5e7eb'),
-        height:Math.max(3, Math.round((h.in||0)/maxIn*56))+'px'});
+        height:Math.max(3, Math.round((h.in||0)/maxIn*52))+'px',
+        flexShrink:'0'});
       bar.title=h.h+'시 '+(h.in||0)+'명';
-      const lb=div('');css(lb,{fontSize:'9px',color:isNow?'#ef8200':'#c2c4c8',fontWeight:isNow?'800':'500',whiteSpace:'nowrap'});
+      // 라벨 높이를 고정해서 모든 막대의 바닥선을 정렬
+      const lb=div('');css(lb,{fontSize:'9px',height:'14px',lineHeight:'14px',marginTop:'5px',
+        color:isNow?'#ef8200':'#c2c4c8',fontWeight:isNow?'800':'500',whiteSpace:'nowrap',flexShrink:'0'});
       setText(lb,(h.h%3===0)?String(h.h):'');
       ap(col,bar,lb);
       ch.appendChild(col);
