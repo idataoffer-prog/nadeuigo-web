@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260806B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260806C';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1718,10 +1718,13 @@ function parseFestStartDate(f){
 }
 async function fetchTrafficForFestival(f){
   if(!f || !f.vestorDevice) return false;
-  const devs = String(f.vestorDevice).split(',').map(s=>s.trim()).filter(Boolean).join(',');
-  if(!devs) return false;
+  const devIds = String(f.vestorDevice).split(',').map(s=>s.trim()).filter(Boolean);
+  if(!devIds.length) return false;
   const fromDate = parseFestStartDate(f);
-  const key = 'tf_' + devs + '_' + (fromDate||'');
+  if(!fromDate) return false;
+  const todayKst = new Date(Date.now()+9*3600*1000).toISOString().slice(0,10);
+  const key = 'tf2_' + devIds.join('_') + '_' + fromDate;
+  // 5분 캐시
   try{
     const raw = localStorage.getItem(key);
     if(raw){
@@ -1733,17 +1736,82 @@ async function fetchTrafficForFestival(f){
       }
     }
   }catch(e){}
+  // 장비 위치명 (VESTOR 대시보드와 동일한 보정 매칭용)
+  let devNames = {};
+  try{
+    if(!window._vdevMap && db){
+      const doc = await db.collection('settings').doc('vestorDevices').get();
+      window._vdevMap = {};
+      if(doc.exists && Array.isArray(doc.data().list)){
+        doc.data().list.forEach(d => { window._vdevMap[d.id] = d.name || ''; });
+      }
+    }
+    devNames = window._vdevMap || {};
+  }catch(e){}
+  // 대시보드와 동일한 소스: 장비별 aggregate(보정 데이터) 병렬 조회
+  try{
+    const results = await Promise.all(devIds.map(id => {
+      let url = 'https://www.vestor.kr/aggregate?device_id=' + encodeURIComponent(id)
+        + '&interval=hourly&start=' + fromDate + 'T00:00:00&end=' + todayKst + 'T23:59:59&source=override';
+      if(devNames[id]) url += '&location_name=' + encodeURIComponent(devNames[id]);
+      return fetch(url).then(r => r.json()).catch(() => null);
+    }));
+    let anyOk = false;
+    let totalIn = 0, todayIn = 0;
+    const hourMap = {}, dayMap = {};
+    results.forEach(rj => {
+      if(!rj || !Array.isArray(rj.data)) return;
+      anyOk = true;
+      rj.data.forEach(row => {
+        const vin = parseInt(row.total_in, 10) || 0;
+        if(!vin) return;
+        // UTC → 한국시간
+        const t = new Date(new Date(row.interval_start).getTime() + 9*3600*1000);
+        const dStr = t.toISOString().slice(0,10);
+        const h = t.getUTCHours();
+        totalIn += vin;
+        dayMap[dStr] = (dayMap[dStr]||0) + vin;
+        if(dStr === todayKst){
+          todayIn += vin;
+          hourMap[h] = (hourMap[h]||0) + vin;
+        }
+      });
+    });
+    if(!anyOk){
+      // 대시보드 소스 접근 실패 시 기존 공개 API로 폴백
+      return await fetchTrafficFallback(f, devIds.join(','), fromDate, key);
+    }
+    const hours = [];
+    for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hourMap[hh]||0});
+    const days = Object.keys(dayMap).sort().map(d => ({d:d, in:dayMap[d]}));
+    const peak = hours.reduce((m,x)=>Math.max(m,x.in),0);
+    const nowH = new Date(Date.now()+9*3600*1000).getUTCHours();
+    const cur = hourMap[nowH] != null ? hourMap[nowH] : (hourMap[nowH-1]||0);
+    const congestion = peak > 0 ? Math.min(100, Math.round(cur/peak*100)) : 0;
+    f._traffic = { todayIn: todayIn, totalIn: totalIn, congestion: congestion,
+                   hours: hours, days: days, deviceCount: devIds.length };
+    if(todayIn > 0) f.cong = congestion;
+    try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
+    console.log('[나들이go] 실측(대시보드 동일 소스): ' + f.title + ' 누적 ' + totalIn + ' / 오늘 ' + todayIn);
+    return true;
+  }catch(e){
+    return await fetchTrafficFallback(f, devIds.join(','), fromDate, key);
+  }
+}
+// 폴백: 기존 공개 API (원본 합산)
+async function fetchTrafficFallback(f, devs, fromDate, cacheKey){
   try{
     let url = 'https://vestor.kr/api/public/festival-traffic?devices=' + encodeURIComponent(devs);
     if(fromDate) url += '&from=' + fromDate;
     const res = await fetch(url);
     const d = await res.json();
     if(!d || !d.ok) return false;
+    const hm = {}; (d.hours||[]).forEach(h => { hm[h.h] = h.in||0; });
+    const hours = []; for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hm[hh]||0});
     f._traffic = { todayIn: d.todayIn||0, totalIn: (typeof d.totalIn==='number'?d.totalIn:null),
-                   congestion: d.congestion||0, hours: d.hours||[], days: d.days||[], deviceCount: d.deviceCount||1 };
-    if((d.todayIn||0) > 0 && typeof d.congestion === 'number') f.cong = d.congestion; // 실측값으로 교체
-    try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
-    console.log('[나들이go] 실측 유동인구: ' + f.title + ' 오늘 ' + d.todayIn + '명 / 누적 ' + d.totalIn + '명');
+                   congestion: d.congestion||0, hours: hours, days: [], deviceCount: d.deviceCount||1 };
+    if((d.todayIn||0) > 0 && typeof d.congestion === 'number') f.cong = d.congestion;
+    try{ localStorage.setItem(cacheKey, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
     return true;
   }catch(e){ return false; }
 }
