@@ -254,6 +254,7 @@
       </div>
       <div class="spacer"></div>
       <button class="btn btn-secondary btn-sm" onclick="openCategoryManager()">🏷️ 카테고리 관리</button>
+      <button class="btn btn-secondary btn-sm" onclick="openVDeviceManager()">⚡ 장비 관리</button>
       <button class="btn btn-secondary btn-sm" onclick="downloadCSV()">📥 CSV</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('csv-file').click()">📤 CSV 가져오기</button>
       <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="uploadCSV(this)">
@@ -374,6 +375,7 @@ async function startApp(){
     db = firebase.firestore();
     try{ storage = firebase.storage(); }catch(e){}
     await loadCategories();
+    await loadVDevices();
     await loadFestivals();
     bindEvents();
   }catch(err){
@@ -551,6 +553,73 @@ function bindEvents(){
 function debounce(fn, ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
 
 // ─────────────────────────────────────────────────────────────
+// ─── VESTOR 장비 목록 (한 번 등록 → 축제마다 체크로 선택) ───
+let VDEVICES = [];
+async function loadVDevices(){
+  try{
+    const doc = await db.collection('settings').doc('vestorDevices').get();
+    VDEVICES = (doc.exists && Array.isArray(doc.data().list)) ? doc.data().list : [];
+  }catch(e){ VDEVICES = []; }
+}
+async function saveVDevices(){
+  try{
+    await db.collection('settings').doc('vestorDevices').set({ list: VDEVICES, updatedAt: new Date().toISOString() });
+  }catch(e){ toast('장비 목록 저장 실패: '+e.message, 'error'); }
+}
+function openVDeviceManager(){
+  const old = document.getElementById('vdev-overlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'vdev-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick = e => { if(e.target === ov) ov.remove(); };
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;border-radius:16px;padding:24px;width:100%;max-width:460px;max-height:80vh;overflow-y:auto;';
+  sheet.innerHTML = `
+    <h2 style="margin:0 0 4px;font-size:19px;font-weight:800;color:#0f172a">⚡ VESTOR 계수기 관리</h2>
+    <p style="margin:0 0 16px;font-size:12px;color:#94a3b8">여기 등록한 장비가 축제 편집 화면에 체크박스로 나타납니다.</p>
+    <div id="vdev-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;">
+      <input id="vdev-serial" placeholder="장비번호 (예: 2424001)" style="flex:1;padding:11px 13px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;outline:none;">
+      <input id="vdev-name" placeholder="설명 (예: 주출입구)" style="flex:1;padding:11px 13px;border-radius:10px;border:1.5px solid #e2e8f0;font-size:13px;outline:none;">
+      <button onclick="addVDevice()" style="padding:11px 18px;border-radius:10px;border:none;background:#ef8200;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">추가</button>
+    </div>`;
+  ov.appendChild(sheet);
+  document.body.appendChild(ov);
+  renderVDeviceList();
+}
+function renderVDeviceList(){
+  const box = document.getElementById('vdev-list');
+  if(!box) return;
+  if(!VDEVICES.length){
+    box.innerHTML = '<div style="text-align:center;color:#94a3b8;font-size:13px;padding:24px 0;">아직 등록된 장비가 없어요</div>';
+    return;
+  }
+  box.innerHTML = VDEVICES.map((dv, i) => `
+    <div style="display:flex;align-items:center;gap:10px;background:#f8fafc;border-radius:10px;padding:11px 14px;">
+      <b style="font-size:13px;color:#0f172a;">${escapeHtml(dv.id)}</b>
+      <span style="font-size:12px;color:#94a3b8;flex:1;">${escapeHtml(dv.name||'')}</span>
+      <span onclick="delVDevice(${i})" style="color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;">삭제</span>
+    </div>`).join('');
+}
+async function addVDevice(){
+  const s = document.getElementById('vdev-serial');
+  const n = document.getElementById('vdev-name');
+  const id = (s.value||'').trim();
+  if(!/^[0-9A-Za-z_-]{3,30}$/.test(id)){ toast('장비번호를 확인해주세요 (영문·숫자 3~30자)', 'error'); return; }
+  if(VDEVICES.some(d => d.id === id)){ toast('이미 등록된 장비예요', 'error'); return; }
+  VDEVICES.push({ id: id, name: (n.value||'').trim() });
+  s.value = ''; n.value = '';
+  await saveVDevices();
+  renderVDeviceList();
+  toast('장비가 등록되었습니다');
+}
+async function delVDevice(i){
+  if(!confirm('이 장비를 목록에서 삭제할까요?\n(이미 축제에 연결된 설정은 유지됩니다)')) return;
+  VDEVICES.splice(i, 1);
+  await saveVDevices();
+  renderVDeviceList();
+}
+
 // 카테고리 관리 (Firestore 연동)
 // ─────────────────────────────────────────────────────────────
 let CATEGORIES = {
@@ -970,8 +1039,17 @@ function openEdit(docId){
             <span>⚡ 아이데이터(VESTOR) 운영 축제로 표시</span>
           </label>
           <div class="field" style="margin-top:8px;">
-            <label>⚡ VESTOR 계수기 장비번호 (실측 유동인구 연동 · 여러 대면 쉼표로 구분)</label>
-            <input type="text" id="m-vestor-device" placeholder="예: 2424009,2424008 — 모든 출입구 계수기를 합산해 앱에 표시" value="${f.vestorDevice||''}">
+            <label>⚡ VESTOR 계수기 선택 (체크한 장비들을 합산해 앱에 실측 표시)</label>
+            <div id="m-vestor-list" style="display:flex;flex-direction:column;gap:6px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:12px 14px;max-height:180px;overflow-y:auto;">
+              ${VDEVICES.length ? VDEVICES.map(dv => {
+                const sel = String(f.vestorDevice||'').split(',').map(s=>s.trim()).includes(dv.id);
+                return '<label style="display:flex;align-items:center;gap:9px;font-size:13px;color:#334155;cursor:pointer;">'
+                  + '<input type="checkbox" class="m-vestor-chk" value="'+escapeHtml(dv.id)+'" '+(sel?'checked':'')+' style="width:16px;height:16px;accent-color:#ef8200;">'
+                  + '<b>'+escapeHtml(dv.id)+'</b>'
+                  + (dv.name ? '<span style="color:#94a3b8;">'+escapeHtml(dv.name)+'</span>' : '')
+                  + '</label>';
+              }).join('') : '<div style="font-size:12px;color:#94a3b8;">등록된 장비가 없어요. 상단 <b>⚡ 장비 관리</b>에서 계수기를 먼저 등록해주세요.</div>'}
+            </div>
           </div>
         </div>
       </div>
@@ -2888,7 +2966,7 @@ async function saveEdit(docId){
     cong: parseInt(g('cong').value) || 50,
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
-    vestorDevice: (document.getElementById('m-vestor-device') ? document.getElementById('m-vestor-device').value.trim() : ''),
+    vestorDevice: Array.from(document.querySelectorAll('.m-vestor-chk:checked')).map(c => c.value).join(','),
     programs,
     coupons,
     photospots,
