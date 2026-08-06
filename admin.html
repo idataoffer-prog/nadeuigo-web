@@ -3036,7 +3036,9 @@ async function saveEdit(docId){
     cong: parseInt(g('cong').value) || 50,
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
-    vestorDevice: Array.from(document.querySelectorAll('.m-vestor-chk:checked')).map(c => c.value).join(','),
+    vestorDevice: (document.querySelectorAll('.m-vestor-chk').length
+      ? Array.from(document.querySelectorAll('.m-vestor-chk:checked')).map(c => c.value).join(',')
+      : (f.vestorDevice || '')), // 장비 목록 미등록 상태에선 기존 연결 보존
     programs,
     coupons,
     photospots,
