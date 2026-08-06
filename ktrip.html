@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260805E';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260806A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1740,7 +1740,7 @@ async function fetchTrafficForFestival(f){
     const d = await res.json();
     if(!d || !d.ok) return false;
     f._traffic = { todayIn: d.todayIn||0, totalIn: (typeof d.totalIn==='number'?d.totalIn:null),
-                   congestion: d.congestion||0, hours: d.hours||[], deviceCount: d.deviceCount||1 };
+                   congestion: d.congestion||0, hours: d.hours||[], days: d.days||[], deviceCount: d.deviceCount||1 };
     if((d.todayIn||0) > 0 && typeof d.congestion === 'number') f.cong = d.congestion; // 실측값으로 교체
     try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
     console.log('[나들이go] 실측 유동인구: ' + f.title + ' 오늘 ' + d.todayIn + '명 / 누적 ' + d.totalIn + '명');
@@ -7618,8 +7618,11 @@ function buildSubCong(){
   const _hasTf = !!(tf && (tf.todayIn > 0 || (tf.hours||[]).length > 0));
   let ms = null;
   if(_hasTf){
-    // 심야(0~5시)는 노이즈가 커서 차트에서 제외
-    const hrs = (tf.hours||[]).filter(h => h.h >= 6);
+    // 00시~23시 전체 시간축 (데이터 없는 시간은 0으로 채움)
+    const _hmap = {};
+    (tf.hours||[]).forEach(h => { _hmap[h.h] = h.in||0; });
+    const hrs = [];
+    for(let hh=0; hh<24; hh++) hrs.push({h:hh, in:_hmap[hh]||0});
     const maxIn = Math.max(1, ...hrs.map(h => h.in||0));
     const nowH = new Date().getHours();
 
@@ -7654,12 +7657,12 @@ function buildSubCong(){
     // 오늘 시간대별 차트 (06시~)
     const chLbl=div('');css(chLbl,{fontSize:'12px',fontWeight:'700',color:'#475569',marginBottom:'10px'});
     setText(chLbl,'오늘 시간대별 방문');
-    const ch=div('');css(ch,{display:'flex',alignItems:'flex-end',gap:'4px',height:'72px'});
+    const ch=div('');css(ch,{display:'flex',alignItems:'flex-end',gap:'2px',height:'72px'});
     hrs.forEach(h=>{
       const col=div('');css(col,{flex:'1',display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end',minWidth:'0'});
       const isPeak=(h.in===maxIn&&h.in>0);
       const isNow=(h.h===nowH);
-      const bar=div('');css(bar,{width:'100%',maxWidth:'18px',borderRadius:'3px',
+      const bar=div('');css(bar,{width:'100%',maxWidth:'12px',borderRadius:'2.5px',
         background: isNow?'#ef8200':(isPeak?'#111':'#e5e7eb'),
         height:Math.max(3, Math.round((h.in||0)/maxIn*52))+'px',
         flexShrink:'0'});
@@ -7672,12 +7675,43 @@ function buildSubCong(){
       ch.appendChild(col);
     });
     const legend=div('');css(legend,{display:'flex',gap:'12px',marginTop:'10px'});
-    [['#ef8200','현재'],['#111','피크']].forEach(([c,l])=>{
+    [['#ef8200','현재·오늘'],['#111','피크']].forEach(([c,l])=>{
       const li=div('');css(li,{display:'flex',alignItems:'center',gap:'4px',fontSize:'10px',color:'#94a3b8'});
       const dot=div('');css(dot,{width:'7px',height:'7px',borderRadius:'2px',background:c});
       ap(li,dot,l); legend.appendChild(li);
     });
     ap(ms,mh,statRow,chLbl,ch,legend);
+
+    // ── 일자별 방문 (축제 시작일부터)
+    const days = tf.days||[];
+    if(days.length >= 2){
+      const dLbl=div('');css(dLbl,{fontSize:'12px',fontWeight:'700',color:'#475569',margin:'22px 0 10px'});
+      setText(dLbl,'일자별 방문');
+      const maxD=Math.max(1, ...days.map(x=>x.in||0));
+      const todayStr=new Date(Date.now()+9*3600*1000).toISOString().slice(0,10);
+      // 날짜가 많으면 가로 스크롤
+      const dWrap=div('');css(dWrap,{overflowX:'auto',WebkitOverflowScrolling:'touch'});
+      const dCh=div('');css(dCh,{display:'flex',alignItems:'flex-end',gap:'5px',height:'86px',
+        minWidth: days.length>12 ? (days.length*26)+'px' : '100%'});
+      days.forEach((dd,di)=>{
+        const col=div('');css(col,{flex:'1',display:'flex',flexDirection:'column',alignItems:'center',height:'100%',justifyContent:'flex-end',minWidth:'20px'});
+        const isPk=(dd.in===maxD&&dd.in>0);
+        const isToday=(dd.d===todayStr);
+        const bar=div('');css(bar,{width:'100%',maxWidth:'16px',borderRadius:'3px',
+          background:isToday?'#ef8200':(isPk?'#111':'#e5e7eb'),
+          height:Math.max(3, Math.round((dd.in||0)/maxD*58))+'px',flexShrink:'0'});
+        bar.title=(dd.d||'')+' '+(dd.in||0).toLocaleString()+'명';
+        const lb=div('');css(lb,{fontSize:'9px',height:'14px',lineHeight:'14px',marginTop:'5px',
+          color:isToday?'#ef8200':'#c2c4c8',fontWeight:isToday?'800':'500',whiteSpace:'nowrap',flexShrink:'0'});
+        // 라벨: 첫날/마지막/3일 간격
+        const show = di===0 || di===days.length-1 || di%3===0;
+        setText(lb, show ? String(dd.d||'').slice(5).replace('-','.') : '');
+        ap(col,bar,lb);
+        dCh.appendChild(col);
+      });
+      dWrap.appendChild(dCh);
+      ap(ms,dLbl,dWrap);
+    }
   }
 
   // 히어로 섹션 (현재 상태 요약)
@@ -7709,12 +7743,18 @@ function buildSubCong(){
   const vChart=div('cong-v-chart');
   // 실측 데이터가 있으면 실제 시간대별 비율, 없으면 예시 패턴
   const _nowH2 = new Date().getHours();
-  const _rtData = _hasTf
-    ? (tf.hours||[]).filter(h=>h.h>=6).map(h=>{
-        const _pk = Math.max(1, ...(tf.hours||[]).filter(x=>x.h>=6).map(x=>x.in||0));
-        return { t: h.h+'시', v: Math.round((h.in||0)/_pk*100), isNow: h.h===_nowH2 };
-      })
-    : VESTOR.hourly;
+  let _rtData;
+  if(_hasTf){
+    const _rm = {};
+    (tf.hours||[]).forEach(h => { _rm[h.h] = h.in||0; });
+    const _pk = Math.max(1, ...Object.values(_rm));
+    _rtData = [];
+    for(let hh=0; hh<24; hh++){
+      _rtData.push({ t: (hh%3===0)?(hh+'시'):'', v: Math.round((_rm[hh]||0)/_pk*100), isNow: hh===_nowH2 });
+    }
+  } else {
+    _rtData = VESTOR.hourly;
+  }
   _rtData.forEach(h=>{
     const group=div(`cong-v-group${h.isNow?' active':''}`);
     const rail=div('cong-v-rail');
@@ -7728,23 +7768,47 @@ function buildSubCong(){
   });
   ap(realtimePanel,rtHdr,vChart);
 
-  // 요일별 패널
+  // 요일별 패널 (세로 그래프 · 실측이면 실제 요일별 평균)
   const predictPanel=div('cong-data-card');
   const prHdr=div('cong-card-hdr');
-  ap(prHdr,div('cong-card-title','이번 주 방문 예측'),div('cong-card-unit','(단위: %)'));
+  // 오늘부터 7일: 날짜와 요일 함께 표기 (예: 8.6(목))
+  const _dowNames=['일','월','화','수','목','금','토'];
+  const _dowPattern={0:85,1:55,2:52,3:58,4:62,5:78,6:100}; // 요일별 일반 패턴
+  // 실측 일자별 데이터가 있으면 요일 평균으로 대체
+  let _dowAvgPct=null;
+  if(_hasTf && (tf.days||[]).length >= 4){
+    const dowSum=[0,0,0,0,0,0,0], dowCnt=[0,0,0,0,0,0,0];
+    (tf.days||[]).forEach(dd=>{
+      try{ const w2=new Date(dd.d+'T00:00:00+09:00').getDay(); dowSum[w2]+=(dd.in||0); dowCnt[w2]++; }catch(e){}
+    });
+    const dowAvg=dowSum.map((s,i)=>dowCnt[i]?Math.round(s/dowCnt[i]):0);
+    const maxAvg=Math.max(1,...dowAvg);
+    if(maxAvg>1) _dowAvgPct=dowAvg.map(v=>Math.round(v/maxAvg*100));
+  }
+  const _wkData=[];
+  for(let di=0; di<7; di++){
+    const dt=new Date(Date.now()+di*86400000);
+    const dow=dt.getDay();
+    _wkData.push({
+      t:(dt.getMonth()+1)+'.'+dt.getDate()+'('+_dowNames[dow]+')',
+      v:_dowAvgPct?_dowAvgPct[dow]:_dowPattern[dow],
+      isNow:di===0
+    });
+  }
+  ap(prHdr,div('cong-card-title','요일별 방문 '+(_dowAvgPct?'평균':'예측')),div('cong-card-unit',_dowAvgPct?'실측 기반 · 최다=100%':'(단위: %)'));
   predictPanel.appendChild(prHdr);
-  VESTOR.predict.forEach(p=>{
-    const row=div('cong-h-row');
-    const rail=div('cong-h-rail');
-    const fill=div('cong-h-fill');
-    css(fill,{width:`${p.v}%`});
-    if(p.v>85) css(fill,{background:'#ef4444'});
-    else if(p.v>65) css(fill,{background:'#f59e0b'});
+  const wkChart=div('cong-v-chart');
+  _wkData.forEach(p=>{
+    const group=div(`cong-v-group${p.isNow?' active':''}`);
+    const rail=div('cong-v-rail');
+    const fill=div('cong-v-fill');
+    css(fill,{height:`${Math.max(3,p.v)}%`});
+    if(!p.isNow && p.v>85) css(fill,{background:'#ef4444'});
     rail.appendChild(fill);
-    const val=div('cong-h-value');setText(val,`${p.v}%`);
-    ap(row,div('cong-h-label',p.day),rail,val);
-    predictPanel.appendChild(row);
+    ap(group,rail,div('cong-v-label',p.t));
+    wkChart.appendChild(group);
   });
+  predictPanel.appendChild(wkChart);
 
   // 팁 가이드
   const tip=div('cong-tip');
