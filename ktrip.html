@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260806A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260806B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7750,7 +7750,7 @@ function buildSubCong(){
     const _pk = Math.max(1, ...Object.values(_rm));
     _rtData = [];
     for(let hh=0; hh<24; hh++){
-      _rtData.push({ t: (hh%3===0)?(hh+'시'):'', v: Math.round((_rm[hh]||0)/_pk*100), isNow: hh===_nowH2 });
+      _rtData.push({ t: (hh%3===0)?String(hh):'', v: Math.round((_rm[hh]||0)/_pk*100), isNow: hh===_nowH2 });
     }
   } else {
     _rtData = VESTOR.hourly;
