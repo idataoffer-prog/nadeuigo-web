@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260806D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260807A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1721,7 +1721,7 @@ async function fetchTrafficForFestival(f){
   // ① 수집기가 Firebase에 기록해둔 대시보드 동일 숫자 (30분 이내면 그대로 사용)
   try{
     const lt = f.liveTraffic;
-    if(lt && lt.updatedAt && (Date.now() - new Date(lt.updatedAt).getTime()) < 30*60*1000){
+    if(lt && lt.updatedAt && (Date.now() - new Date(lt.updatedAt).getTime()) < 6*60*60*1000){
       const hm = {}; (lt.hours||[]).forEach(h => { hm[h.h] = h.in||0; });
       const hours = []; for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hm[hh]||0});
       f._traffic = { todayIn: lt.todayIn||0, totalIn: (typeof lt.totalIn==='number'?lt.totalIn:null),
@@ -1748,34 +1748,38 @@ async function fetchTrafficForFestival(f){
       }
     }
   }catch(e){}
-  // 장비 위치명 (VESTOR 대시보드와 동일한 보정 매칭용)
-  let devNames = {};
+  // 장비 위치명 + 가중치 (VESTOR 대시보드와 동일한 계산)
+  let devInfo = {};
   try{
-    if(!window._vdevMap && db){
+    if(!window._vdevMap2 && db){
       const doc = await db.collection('settings').doc('vestorDevices').get();
-      window._vdevMap = {};
+      window._vdevMap2 = {};
       if(doc.exists && Array.isArray(doc.data().list)){
-        doc.data().list.forEach(d => { window._vdevMap[d.id] = d.name || ''; });
+        doc.data().list.forEach(d => {
+          window._vdevMap2[d.id] = { name: d.name || '', w: (Number(d.visitorWeight) > 0 ? Number(d.visitorWeight) : 1) };
+        });
       }
     }
-    devNames = window._vdevMap || {};
+    devInfo = window._vdevMap2 || {};
   }catch(e){}
   // 대시보드와 동일한 소스: 장비별 aggregate(보정 데이터) 병렬 조회
   try{
     const results = await Promise.all(devIds.map(id => {
       let url = 'https://www.vestor.kr/aggregate?device_id=' + encodeURIComponent(id)
         + '&interval=hourly&start=' + fromDate + 'T00:00:00&end=' + todayKst + 'T23:59:59&source=override';
-      if(devNames[id]) url += '&location_name=' + encodeURIComponent(devNames[id]);
-      return fetch(url).then(r => r.json()).catch(() => null);
+      if(devInfo[id] && devInfo[id].name) url += '&location_name=' + encodeURIComponent(devInfo[id].name);
+      return fetch(url).then(r => r.json()).then(j => ({id: id, j: j})).catch(() => null);
     }));
     let anyOk = false;
     let totalIn = 0, todayIn = 0;
     const hourMap = {}, dayMap = {};
-    results.forEach(rj => {
-      if(!rj || !Array.isArray(rj.data)) return;
+    results.forEach(pack => {
+      if(!pack || !pack.j || !Array.isArray(pack.j.data)) return;
       anyOk = true;
+      const w = (devInfo[pack.id] && devInfo[pack.id].w) || 1; // 대시보드와 동일한 계수기 가중치
+      const rj = pack.j;
       rj.data.forEach(row => {
-        const vin = parseInt(row.total_in, 10) || 0;
+        const vin = (parseInt(row.total_in, 10) || 0) * w;
         if(!vin) return;
         // UTC → 한국시간
         const t = new Date(new Date(row.interval_start).getTime() + 9*3600*1000);
@@ -1793,9 +1797,10 @@ async function fetchTrafficForFestival(f){
       // 대시보드 소스 접근 실패 시 기존 공개 API로 폴백
       return await fetchTrafficFallback(f, devIds.join(','), fromDate, key);
     }
+    totalIn = Math.round(totalIn); todayIn = Math.round(todayIn);
     const hours = [];
-    for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hourMap[hh]||0});
-    const days = Object.keys(dayMap).sort().map(d => ({d:d, in:dayMap[d]}));
+    for(let hh=0; hh<24; hh++) hours.push({h:hh, in:Math.round(hourMap[hh]||0)});
+    const days = Object.keys(dayMap).sort().map(d => ({d:d, in:Math.round(dayMap[d])}));
     const peak = hours.reduce((m,x)=>Math.max(m,x.in),0);
     const nowH = new Date(Date.now()+9*3600*1000).getUTCHours();
     const cur = hourMap[nowH] != null ? hourMap[nowH] : (hourMap[nowH-1]||0);
