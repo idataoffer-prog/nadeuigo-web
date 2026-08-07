@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260806C';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260806D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1718,6 +1718,18 @@ function parseFestStartDate(f){
 }
 async function fetchTrafficForFestival(f){
   if(!f || !f.vestorDevice) return false;
+  // ① 수집기가 Firebase에 기록해둔 대시보드 동일 숫자 (30분 이내면 그대로 사용)
+  try{
+    const lt = f.liveTraffic;
+    if(lt && lt.updatedAt && (Date.now() - new Date(lt.updatedAt).getTime()) < 30*60*1000){
+      const hm = {}; (lt.hours||[]).forEach(h => { hm[h.h] = h.in||0; });
+      const hours = []; for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hm[hh]||0});
+      f._traffic = { todayIn: lt.todayIn||0, totalIn: (typeof lt.totalIn==='number'?lt.totalIn:null),
+                     congestion: lt.congestion||0, hours: hours, days: lt.days||[], deviceCount: lt.deviceCount||1 };
+      if(f._traffic.todayIn > 0) f.cong = f._traffic.congestion;
+      return true;
+    }
+  }catch(e){}
   const devIds = String(f.vestorDevice).split(',').map(s=>s.trim()).filter(Boolean);
   if(!devIds.length) return false;
   const fromDate = parseFestStartDate(f);
@@ -11160,6 +11172,7 @@ function fsToFestival(doc){
     cong: d.cong != null ? d.cong : 50,
     idata: !!d.idata,
     vestorDevice: d.vestorDevice || '',
+    liveTraffic: d.liveTraffic || null,
     reviews: d.reviews || [],
     programs: Array.isArray(d.programs) ? d.programs : [],
     coupons: Array.isArray(d.coupons) ? d.coupons : [],
