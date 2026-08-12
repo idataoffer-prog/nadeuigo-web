@@ -1033,6 +1033,15 @@ function openEdit(docId){
 
         <div class="form-section">
           <div class="section-title">
+            <span>🅿️ 주차장 (실측 만차 현황)</span>
+            <button type="button" class="add-btn" onclick="addParkingLot()">+ 주차장 추가</button>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;margin-bottom:8px">🚗 입구에 설치된 계수기의 입·출차 카운트로 실시간 잔여 자리를 앱에 표시합니다</div>
+          <div id="parking-lot-list" class="prog-list"></div>
+        </div>
+
+        <div class="form-section">
+          <div class="section-title">
             <span>🚨 안전센터 (의료/안전 정보)</span>
             <button type="button" class="add-btn" onclick="addSafetyCenter()">+ 안전 거점 추가</button>
           </div>
@@ -1117,12 +1126,41 @@ function openEdit(docId){
   if(stampRewardEl) stampRewardEl.value = f.stampReward || '';
   const stampTipEl = document.getElementById('m-stamp-tip');
   if(stampTipEl) stampTipEl.value = f.stampTip || '';
+  // 주차장 항목 초기화
+  _parkingLots = Array.isArray(f.parkingLots) ? JSON.parse(JSON.stringify(f.parkingLots)) : [];
+  renderParkingLots();
+
   // 안전센터 항목 렌더링
   renderSafetyCenterList(f.safetyCenters || []);
   renderSafetyEmergencyList(f.safetyEmergencies || []);
   const safetyTipEl = document.getElementById('m-safety-tip');
   if(safetyTipEl) safetyTipEl.value = f.safetyTip || '';
   buildEditSectionNav(); // 섹션 바로가기 칩 생성
+}
+
+// ─── 주차장 관리 (실측 만차 현황) ───
+let _parkingLots = [];
+function renderParkingLots(){
+  const box = document.getElementById('parking-lot-list');
+  if(!box) return;
+  if(!_parkingLots.length){
+    box.innerHTML = '<div style="font-size:12px;color:#cbd5e1;padding:8px 0;">등록된 주차장이 없습니다</div>';
+    return;
+  }
+  box.innerHTML = _parkingLots.map((p, i) => `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;background:#f8fafc;border-radius:10px;padding:10px 12px;">
+      <input value="${escapeAttr(p.name||'')}" placeholder="주차장 이름 (예: 제1주차장)" onchange="_parkingLots[${i}].name=this.value"
+        style="flex:2;min-width:130px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+      <input value="${escapeAttr(p.devices||'')}" placeholder="계수기 번호 (쉼표 구분)" onchange="_parkingLots[${i}].devices=this.value"
+        style="flex:2;min-width:130px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+      <input type="number" value="${p.capacity||''}" placeholder="총 면수" onchange="_parkingLots[${i}].capacity=parseInt(this.value)||0"
+        style="width:90px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+      <span onclick="_parkingLots.splice(${i},1);renderParkingLots()" style="color:#dc2626;font-size:12px;font-weight:700;cursor:pointer;">삭제</span>
+    </div>`).join('');
+}
+function addParkingLot(){
+  _parkingLots.push({name:'', devices:'', capacity:0});
+  renderParkingLots();
 }
 
 // ─── 편집 모달 섹션 바로가기 (포스트잇 칩) ───
@@ -3036,6 +3074,8 @@ async function saveEdit(docId){
     cong: parseInt(g('cong').value) || 50,
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
+    parkingLots: _parkingLots.filter(p => p.name && p.name.trim() && p.devices && p.devices.trim())
+      .map(p => ({name: p.name.trim(), devices: p.devices.trim(), capacity: p.capacity||0})),
     vestorDevice: (document.querySelectorAll('.m-vestor-chk').length
       ? Array.from(document.querySelectorAll('.m-vestor-chk:checked')).map(c => c.value).join(',')
       : (f.vestorDevice || '')), // 장비 목록 미등록 상태에선 기존 연결 보존

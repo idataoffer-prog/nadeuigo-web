@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260807A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260807B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1725,7 +1725,8 @@ async function fetchTrafficForFestival(f){
       const hm = {}; (lt.hours||[]).forEach(h => { hm[h.h] = h.in||0; });
       const hours = []; for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hm[hh]||0});
       f._traffic = { todayIn: lt.todayIn||0, totalIn: (typeof lt.totalIn==='number'?lt.totalIn:null),
-                     congestion: lt.congestion||0, hours: hours, days: lt.days||[], deviceCount: lt.deviceCount||1 };
+                     congestion: lt.congestion||0, hours: hours, days: lt.days||[], deviceCount: lt.deviceCount||1,
+                     parking: Array.isArray(lt.parking) ? lt.parking : [] };
       if(f._traffic.todayIn > 0) f.cong = f._traffic.congestion;
       return true;
     }
@@ -7799,6 +7800,57 @@ function buildSubCong(){
     }
   }
 
+  // ── 🅿️ 주차 현황 카드 (수집기가 계산한 실측 입·출차 기반)
+  let pk = null;
+  const _plots = (tf && tf.parking) || [];
+  if(_plots.length){
+    pk=div('');css(pk,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const ph=div('');css(ph,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'16px'});
+    const pt=div('');css(pt,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(pt,'🅿️ 주차 현황');
+    const pb=div('');css(pb,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});setText(pb,'입·출차 실측');
+    ap(ph,pt,pb);
+    pk.appendChild(ph);
+    _plots.forEach(lot=>{
+      const cap=lot.capacity||0;
+      const occ=Math.max(0, lot.occupied||0);
+      const remain=cap>0?Math.max(0,cap-occ):null;
+      const pct=cap>0?Math.min(100,Math.round(occ/cap*100)):null;
+      const state = pct==null?['확인 중','#94a3b8']
+        : pct>=100?['만차','#dc2626']
+        : pct>=85?['만차 임박','#ea580c']
+        : pct>=60?['보통','#d97706']
+        : ['여유','#16a34a'];
+      const row=div('');css(row,{marginBottom:'16px'});
+      const r1=div('');css(r1,{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'7px'});
+      const nm=div('');css(nm,{fontSize:'14px',fontWeight:'700',color:'#334155'});setText(nm,lot.name||'주차장');
+      const stt=div('');css(stt,{fontSize:'12px',fontWeight:'800',color:state[1]});setText(stt,state[0]);
+      ap(r1,nm,stt);
+      row.appendChild(r1);
+      if(cap>0){
+        // 게이지 바
+        const rail=div('');css(rail,{height:'8px',background:'#f1f5f9',borderRadius:'9999px',overflow:'hidden',marginBottom:'6px'});
+        const fill=div('');css(fill,{height:'100%',width:pct+'%',borderRadius:'9999px',
+          background:pct>=85?'#dc2626':(pct>=60?'#f59e0b':'#22c55e'),transition:'width .5s ease'});
+        rail.appendChild(fill);
+        row.appendChild(rail);
+        const r2=div('');css(r2,{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'#64748b'});
+        const left=div('');setText(left,'주차 '+occ.toLocaleString()+'대 / 총 '+cap.toLocaleString()+'면');
+        const right=div('');css(right,{fontWeight:'800',color:remain>0?'#0f172a':'#dc2626'});
+        setText(right, remain>0 ? '잔여 '+remain.toLocaleString()+'면' : '자리 없음');
+        ap(r2,left,right);
+        row.appendChild(r2);
+      } else {
+        const r2=div('');css(r2,{fontSize:'12px',color:'#64748b'});
+        setText(r2,'현재 주차 '+occ.toLocaleString()+'대 (입차 '+(lot.in||0).toLocaleString()+' · 출차 '+(lot.out||0).toLocaleString()+')');
+        row.appendChild(r2);
+      }
+      pk.appendChild(row);
+    });
+    const note=div('');css(note,{fontSize:'10px',color:'#c2c4c8',marginTop:'2px'});
+    setText(note,'오늘 0시부터 입·출차 집계 기준이며 실제와 다소 차이가 있을 수 있어요');
+    pk.appendChild(note);
+  }
+
   // 히어로 섹션 (현재 상태 요약)
   const congVal=S.item?.cong||92;
   const statusInfo=congVal>90
@@ -7915,8 +7967,9 @@ function buildSubCong(){
     }
   }
 
-  if(ms) ap(body,hero,ms,tabWrap,realtimePanel,predictPanel,tip);
-  else ap(body,hero,tabWrap,realtimePanel,predictPanel,tip);
+  const _parts=[hero]; if(ms) _parts.push(ms); if(pk) _parts.push(pk);
+  _parts.push(tabWrap,realtimePanel,predictPanel,tip);
+  ap.apply(null,[body].concat(_parts));
   switchCongTab(S.congTab||'realtime');
 
   ap(modal,hdr,body);
