@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260810B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260813A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4904,8 +4904,7 @@ function buildDetail(){
   [{id:'program',n:'프로그램',ic:'calendar',sc:'#2563eb',bg:'#eff6ff'},
    {id:'coupon',n:'쿠폰함',ic:'ticket',sc:'#dc2626',bg:'#fef2f2'},
    {id:'photospot',n:'포토존',ic:'camera',sc:'#7c3aed',bg:'#faf5ff'},
-   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'},
-   {id:'parking',n:'주차 현황',ic:'map-pin',sc:'#0f766e',bg:'#f0fdfa'}
+   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'}
   ].forEach(s=>{
     const isAvailable = hasData(s.id);
     const b=btn('svc-btn','',()=>{
@@ -7732,9 +7731,10 @@ function buildSubInfo(){
 
 // ── 🅿️ 주차 현황 전용 화면
 function buildSubParking(){
-  const modal=div('sub-modal slide-right');
+  const modal=div(S._back?'modal':'modal slide-right');css(modal,{zIndex:'70'});
   const hdr=div('modal-header');
-  ap(hdr,backBtn(()=>goBack({sub:null})),div('modal-title','주차 현황'),div(''));
+  const _spP=div('');css(_spP,{width:'38px',flexShrink:'0'});
+  ap(hdr,backBtn(()=>goBack({sub:null})),div('modal-title','주차 현황'),_spP);
   const body=div('scroll-area');css(body,{background:'#f8fafc',paddingBottom:'40px'});
 
   const lots=(S.item&&S.item.parkingLots)||[];
