@@ -456,6 +456,7 @@ function renderTable(arr){
       <td style="font-size:12px;color:#475569">⭐ ${f.rating!=null?f.rating:'-'}</td>
       <td><div class="row-actions">
         <button class="icon-btn fav ${f.idata?'on':''}" onclick="toggleIdata('${f.docId}')" title="VESTOR 운영 토글">⚡</button>
+        <button class="icon-btn" onclick="openQrModal('${f.docId}','${escapeAttr(f.title)}')" title="QR 코드">🔳</button>
         <button class="icon-btn" onclick="openEdit('${f.docId}')" title="수정">✏️</button>
         <button class="icon-btn del" onclick="deleteOne('${f.docId}','${escapeAttr(f.title)}')" title="삭제">🗑</button>
       </div></td>
@@ -553,6 +554,31 @@ function bindEvents(){
 function debounce(fn, ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
 
 // ─────────────────────────────────────────────────────────────
+// ─── 축제 QR 코드 생성 (찍으면 해당 축제 상세로 직행) ───
+function openQrModal(docId, title){
+  const appUrl = 'https://idataoffer-prog.github.io/nadeuigo-web/ktrip.html?festival=' + encodeURIComponent(docId);
+  const qrImg = 'https://api.qrserver.com/v1/create-qr-code/?size=520x520&margin=2&data=' + encodeURIComponent(appUrl);
+  const old = document.getElementById('qr-overlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'qr-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  ov.onclick = e => { if(e.target === ov) ov.remove(); };
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;border-radius:18px;padding:26px;width:100%;max-width:400px;text-align:center;';
+  sheet.innerHTML = `
+    <h2 style="margin:0 0 3px;font-size:18px;font-weight:800;color:#0f172a">${escapeHtml(title)}</h2>
+    <p style="margin:0 0 16px;font-size:12px;color:#94a3b8">이 QR을 찍으면 나들이go에서 해당 축제가 바로 열립니다</p>
+    <img src="${qrImg}" alt="QR" style="width:260px;height:260px;border:1px solid #f1f5f9;border-radius:14px;">
+    <div style="margin-top:14px;padding:10px 12px;background:#f8fafc;border-radius:10px;font-size:11px;color:#64748b;word-break:break-all;text-align:left;">${appUrl}</div>
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button onclick="navigator.clipboard.writeText('${appUrl}').then(()=>toast('링크가 복사되었습니다'))" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:13px;font-weight:700;cursor:pointer;">🔗 링크 복사</button>
+      <a href="${qrImg}" download="QR_${escapeAttr(title)}.png" target="_blank" style="flex:1;padding:12px;border-radius:10px;border:none;background:#ef8200;color:#fff;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:block;">⬇ QR 저장</a>
+    </div>
+    <p style="margin:12px 0 0;font-size:10px;color:#c2c4c8">인쇄물에는 QR 저장 후 고화질 이미지를 사용하세요</p>`;
+  ov.appendChild(sheet);
+  document.body.appendChild(ov);
+}
+
 // ─── VESTOR 장비 목록 (한 번 등록 → 축제마다 체크로 선택) ───
 let VDEVICES = [];
 async function loadVDevices(){

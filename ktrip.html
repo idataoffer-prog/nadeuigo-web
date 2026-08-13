@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260813B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260813C';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -11389,6 +11389,25 @@ async function loadWeeklyViews(){
   }
 }
 
+// ── QR/링크 딥링크: ktrip.html?festival=문서ID (또는 숫자 id·제목) → 해당 축제 상세 바로 열기
+function applyDeepLink(){
+  try{
+    if(window._deepLinked) return;
+    const q = new URLSearchParams(location.search);
+    const key = (q.get('festival') || q.get('fest') || q.get('f') || '').trim();
+    if(!key) return;
+    window._deepLinked = true;
+    const dec = decodeURIComponent(key);
+    const f = S.festivals.find(x => x.docId === dec)
+      || S.festivals.find(x => String(x.id) === dec)
+      || S.festivals.find(x => (x.title||'') === dec);
+    if(!f){ console.warn('[나들이go] 딥링크 축제 못 찾음:', dec); return; }
+    S.tab = 'home'; S.item = f; S.sub = null;
+    render();
+    console.log('[나들이go] QR 딥링크 → ' + f.title);
+  }catch(e){}
+}
+
 async function loadFestivalsFromFirestore(){
   if(!db) return false;
   try{
@@ -11402,6 +11421,7 @@ async function loadFestivalsFromFirestore(){
     const festivals = snap.docs.map(fsToFestival);
     S.festivals = festivals;
     console.log('[나들이go] Firestore에서', festivals.length, '개 로드');
+    applyDeepLink(); // QR/링크로 특정 축제 직행
     return true;
   }catch(err){
     console.error('[나들이go] Firestore 로드 실패:', err.message);
