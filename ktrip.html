@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260807B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260810A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4860,6 +4860,7 @@ function buildDetail(){
       case 'coupon': return Array.isArray(S.item.coupons) && S.item.coupons.length > 0;
       case 'photospot': return Array.isArray(S.item.photospots) && S.item.photospots.length > 0;
       case 'amenities': return Array.isArray(S.item.amenities) && S.item.amenities.length > 0;
+      case 'parking': return Array.isArray(S.item.parkingLots) && S.item.parkingLots.length > 0;
       default: return true;
     }
   };
@@ -4867,7 +4868,8 @@ function buildDetail(){
   [{id:'program',n:'프로그램',ic:'calendar',sc:'#2563eb',bg:'#eff6ff'},
    {id:'coupon',n:'쿠폰함',ic:'ticket',sc:'#dc2626',bg:'#fef2f2'},
    {id:'photospot',n:'포토존',ic:'camera',sc:'#7c3aed',bg:'#faf5ff'},
-   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'}
+   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'},
+   {id:'parking',n:'주차 현황',ic:'map-pin',sc:'#0f766e',bg:'#f0fdfa'}
   ].forEach(s=>{
     const isAvailable = hasData(s.id);
     const b=btn('svc-btn','',()=>{
@@ -7688,6 +7690,94 @@ function buildSubInfo(){
     body.appendChild(tip);
   }
 
+  ap(modal,hdr,body);
+  return modal;
+}
+
+// ── 🅿️ 주차 현황 전용 화면
+function buildSubParking(){
+  const modal=div('sub-modal slide-right');
+  const hdr=div('modal-header');
+  ap(hdr,backBtn(()=>goBack({sub:null})),div('modal-title','주차 현황'),div(''));
+  const body=div('scroll-area');css(body,{background:'#f8fafc',paddingBottom:'40px'});
+
+  const lots=(S.item&&S.item.parkingLots)||[];
+  const live=(S.item&&S.item._traffic&&S.item._traffic.parking)||[];
+  const liveMap={}; live.forEach(l=>{ liveMap[l.name]=l; });
+
+  if(!lots.length){
+    const empty=div('empty-state');
+    ap(empty,div('empty-state-icon','🅿️'),div('empty-state-text','등록된 주차장 정보가 없어요'));
+    body.appendChild(empty);
+  } else {
+    // 요약 헤더
+    const anyLive = live.length > 0;
+    const sumCard=div('');css(sumCard,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const sh=div('');css(sh,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'4px'});
+    const st=div('');css(st,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(st,'실시간 주차 현황');
+    const sb=div('');css(sb,{fontSize:'11px',fontWeight:'600',color:anyLive?'#0f766e':'#94a3b8'});
+    setText(sb,anyLive?'입·출차 계수기 실측':'집계 준비 중');
+    ap(sh,st,sb);
+    const sSub=div('');css(sSub,{fontSize:'12px',color:'#94a3b8'});
+    setText(sSub,'오늘 0시부터 입·출차 집계 기준');
+    ap(sumCard,sh,sSub);
+    body.appendChild(sumCard);
+
+    lots.forEach(cfg=>{
+      const lot=liveMap[cfg.name]||null;
+      const cap=(lot&&lot.capacity)||cfg.capacity||0;
+      const occ=lot?Math.max(0,lot.occupied||0):null;
+      const remain=(occ!=null&&cap>0)?Math.max(0,cap-occ):null;
+      const pct=(occ!=null&&cap>0)?Math.min(100,Math.round(occ/cap*100)):null;
+      const state = occ==null?['집계 대기','#94a3b8']
+        : pct==null?['가동 중','#0f766e']
+        : pct>=100?['만차','#dc2626']
+        : pct>=85?['만차 임박','#ea580c']
+        : pct>=60?['보통','#d97706']
+        : ['여유','#16a34a'];
+
+      const card=div('');css(card,{background:'#fff',margin:'12px 16px 0',padding:'20px',borderRadius:'16px',
+        border:'1px solid #f1f5f9',boxShadow:'0 1px 5px rgba(0,0,0,.04)'});
+      const r1=div('');css(r1,{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'12px'});
+      const nm=div('');css(nm,{fontSize:'15px',fontWeight:'800',color:'#111'});setText(nm,cfg.name);
+      const stt=div('');css(stt,{fontSize:'12px',fontWeight:'800',color:state[1],background:state[1]+'14',padding:'4px 10px',borderRadius:'9999px'});
+      setText(stt,state[0]);
+      ap(r1,nm,stt);
+      card.appendChild(r1);
+
+      if(occ!=null&&cap>0){
+        const bigRow=div('');css(bigRow,{display:'flex',alignItems:'baseline',gap:'6px',marginBottom:'12px'});
+        const bigV=div('');css(bigV,{fontSize:'30px',fontWeight:'900',color:remain>0?'#111':'#dc2626',letterSpacing:'-0.5px'});
+        setText(bigV,remain>0?remain.toLocaleString():'0');
+        const bigL=div('');css(bigL,{fontSize:'13px',color:'#64748b',fontWeight:'600'});
+        setText(bigL,remain>0?'면 남음':'· 자리 없음');
+        ap(bigRow,bigV,bigL);
+        card.appendChild(bigRow);
+        const rail=div('');css(rail,{height:'10px',background:'#f1f5f9',borderRadius:'9999px',overflow:'hidden',marginBottom:'8px'});
+        const fill=div('');css(fill,{height:'100%',width:pct+'%',borderRadius:'9999px',
+          background:pct>=85?'#dc2626':(pct>=60?'#f59e0b':'#22c55e'),transition:'width .5s ease'});
+        rail.appendChild(fill);
+        card.appendChild(rail);
+        const meta=div('');css(meta,{display:'flex',justifyContent:'space-between',fontSize:'12px',color:'#94a3b8'});
+        const m1=div('');setText(m1,'주차 '+occ.toLocaleString()+'대 / 총 '+cap.toLocaleString()+'면');
+        const m2=div('');setText(m2,'입차 '+((lot&&lot.in)||0).toLocaleString()+' · 출차 '+((lot&&lot.out)||0).toLocaleString());
+        ap(meta,m1,m2);
+        card.appendChild(meta);
+      } else if(occ!=null){
+        const meta=div('');css(meta,{fontSize:'13px',color:'#475569'});
+        setText(meta,'현재 주차 '+occ.toLocaleString()+'대 (입차 '+((lot&&lot.in)||0).toLocaleString()+' · 출차 '+((lot&&lot.out)||0).toLocaleString()+')');
+        card.appendChild(meta);
+      } else {
+        const meta=div('');css(meta,{fontSize:'12px',color:'#94a3b8'});
+        setText(meta,'계수 데이터를 기다리는 중이에요'+(cfg.capacity?' · 총 '+cfg.capacity.toLocaleString()+'면':''));
+        card.appendChild(meta);
+      }
+      body.appendChild(card);
+    });
+    const note=div('');css(note,{fontSize:'10px',color:'#c2c4c8',margin:'14px 20px 0'});
+    setText(note,'약 10분 간격으로 갱신되며 실제 상황과 다소 차이가 있을 수 있어요');
+    body.appendChild(note);
+  }
   ap(modal,hdr,body);
   return modal;
 }
@@ -10863,7 +10953,8 @@ function render(){
   if(S.courseItem) frag.appendChild(buildCourseDetail());
   if(S.item){
     frag.appendChild(buildDetail());
-    if(S.sub==='info')         frag.appendChild(buildSubInfo());
+    if(S.sub==='info' && S.subData && S.subData.id==='parking') frag.appendChild(buildSubParking());
+    else if(S.sub==='info')    frag.appendChild(buildSubInfo());
     if(S.sub==='congestion')   frag.appendChild(buildSubCong());
     if(S.sub==='reviews')      frag.appendChild(buildSubReviews());
     if(S.sub==='write-review') frag.appendChild(buildSubWrite());
@@ -11231,6 +11322,7 @@ function fsToFestival(doc){
     idata: !!d.idata,
     vestorDevice: d.vestorDevice || '',
     liveTraffic: d.liveTraffic || null,
+    parkingLots: Array.isArray(d.parkingLots) ? d.parkingLots : [],
     reviews: d.reviews || [],
     programs: Array.isArray(d.programs) ? d.programs : [],
     coupons: Array.isArray(d.coupons) ? d.coupons : [],
