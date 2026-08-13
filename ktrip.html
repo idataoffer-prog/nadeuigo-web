@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260813A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260813B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -4815,48 +4815,13 @@ function buildDetail(){
   ap(dsub,calIco,` ${f.date} · ${f.loc}`);
   ap(dbody,dtitle,dsub);
 
-  // info cards (주차장 등록 축제는 혼잡·주차·날씨 3칸)
-  const _hasParking = Array.isArray(f.parkingLots) && f.parkingLots.length > 0;
-  const ig=div(_hasParking ? 'info-grid3' : 'info-grid2');
+  // info cards
+  const ig=div('info-grid2');
   const ic1=div('info-card');
   css(ic1,{padding:'20px 16px'});
   ic1.onclick=()=>setState({sub:'congestion'});
-  const iv1=div('info-val');css(iv1,{color:'#ef4444',fontSize:_hasParking?'20px':'24px',marginBottom:'5px'});setText(iv1,`${f.cong}%`);
+  const iv1=div('info-val');css(iv1,{color:'#ef4444',fontSize:'24px',marginBottom:'5px'});setText(iv1,`${f.cong}%`);
   const il1=div('info-lbl');css(il1,{fontSize:'11px'});setText(il1,c.label);ap(ic1,iv1,il1);
-
-  // 🅿️ 주차 타일 (혼잡도와 날씨 사이)
-  let icP=null;
-  if(_hasParking){
-    icP=div('info-card');
-    css(icP,{padding:'20px 16px'});
-    icP.onclick=()=>openInfo('parking','주차 현황');
-    const ivP=div('info-val');css(ivP,{fontSize:'20px',marginBottom:'5px'});
-    const ilP=div('info-lbl');css(ilP,{fontSize:'11px'});
-    // 수집기 값: _traffic 우선, 없으면 6시간 이내 liveTraffic
-    let plots = (f._traffic && f._traffic.parking) || null;
-    if(!plots && f.liveTraffic && f.liveTraffic.updatedAt
-       && (Date.now()-new Date(f.liveTraffic.updatedAt).getTime()) < 6*60*60*1000){
-      plots = f.liveTraffic.parking || null;
-    }
-    const withCap = (plots||[]).filter(p => (p.capacity||0) > 0);
-    if(withCap.length){
-      let remain = 0, worst = 0;
-      withCap.forEach(p => {
-        const occ = Math.max(0, p.occupied||0);
-        remain += Math.max(0, p.capacity - occ);
-        worst = Math.max(worst, Math.min(100, Math.round(occ/p.capacity*100)));
-      });
-      const col = worst>=100?'#dc2626':(worst>=85?'#ea580c':(worst>=60?'#d97706':'#16a34a'));
-      css(ivP,{color:col,fontWeight:'800'});
-      setText(ivP, remain>0 ? remain.toLocaleString()+'면' : '만차');
-      setText(ilP, remain>0 ? '주차 가능' : '주차장');
-    } else {
-      const pIco=document.createElement('span');css(pIco,{fontSize:'18px'});setText(pIco,'🅿️');
-      ap(ivP,pIco);
-      setText(ilP,'주차 현황');
-    }
-    ap(icP,ivP,ilP);
-  }
 
   const ic2=div('info-card');
   css(ic2,{padding:'20px 16px'});
@@ -4881,8 +4846,7 @@ function buildDetail(){
   }
   ap(ic2,iv2,il2);
 
-  if(icP) ap(ig,ic1,icP,ic2);
-  else ap(ig,ic1,ic2);
+  ap(ig,ic1,ic2);
 
   // services
   const sl1=div('sec-lbl','축제 서비스');
@@ -4904,7 +4868,8 @@ function buildDetail(){
   [{id:'program',n:'프로그램',ic:'calendar',sc:'#2563eb',bg:'#eff6ff'},
    {id:'coupon',n:'쿠폰함',ic:'ticket',sc:'#dc2626',bg:'#fef2f2'},
    {id:'photospot',n:'포토존',ic:'camera',sc:'#7c3aed',bg:'#faf5ff'},
-   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'}
+   {id:'amenities',n:'편의시설',ic:'info',sc:'#475569',bg:'#f1f5f9'},
+   {id:'parking',n:'주차 현황',ic:'info',sc:'#0f766e',bg:'#f0fdfa'}
   ].forEach(s=>{
     const isAvailable = hasData(s.id);
     const b=btn('svc-btn','',()=>{
