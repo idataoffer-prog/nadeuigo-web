@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260813C';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260813D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -1726,7 +1726,8 @@ async function fetchTrafficForFestival(f){
       const hours = []; for(let hh=0; hh<24; hh++) hours.push({h:hh, in:hm[hh]||0});
       f._traffic = { todayIn: lt.todayIn||0, totalIn: (typeof lt.totalIn==='number'?lt.totalIn:null),
                      congestion: lt.congestion||0, hours: hours, days: lt.days||[], deviceCount: lt.deviceCount||1,
-                     parking: Array.isArray(lt.parking) ? lt.parking : [] };
+                     parking: Array.isArray(lt.parking) ? lt.parking : [],
+                     spots: Array.isArray(lt.spots) ? lt.spots : [] };
       if(f._traffic.todayIn > 0) f.cong = f._traffic.congestion;
       return true;
     }
@@ -1774,11 +1775,13 @@ async function fetchTrafficForFestival(f){
     let anyOk = false;
     let totalIn = 0, todayIn = 0;
     const hourMap = {}, dayMap = {};
+    const spots = [];
     results.forEach(pack => {
       if(!pack || !pack.j || !Array.isArray(pack.j.data)) return;
       anyOk = true;
       const w = (devInfo[pack.id] && devInfo[pack.id].w) || 1; // 대시보드와 동일한 계수기 가중치
       const rj = pack.j;
+      let spotTotal = 0, spotToday = 0;
       rj.data.forEach(row => {
         const vin = (parseInt(row.total_in, 10) || 0) * w;
         if(!vin) return;
@@ -1787,12 +1790,16 @@ async function fetchTrafficForFestival(f){
         const dStr = t.toISOString().slice(0,10);
         const h = t.getUTCHours();
         totalIn += vin;
+        spotTotal += vin;
         dayMap[dStr] = (dayMap[dStr]||0) + vin;
         if(dStr === todayKst){
           todayIn += vin;
+          spotToday += vin;
           hourMap[h] = (hourMap[h]||0) + vin;
         }
       });
+      spots.push({ id: pack.id, name: (devInfo[pack.id] && devInfo[pack.id].name) || '',
+                   totalIn: Math.round(spotTotal), todayIn: Math.round(spotToday) });
     });
     if(!anyOk){
       // 대시보드 소스 접근 실패 시 기존 공개 API로 폴백
@@ -1807,7 +1814,7 @@ async function fetchTrafficForFestival(f){
     const cur = hourMap[nowH] != null ? hourMap[nowH] : (hourMap[nowH-1]||0);
     const congestion = peak > 0 ? Math.min(100, Math.round(cur/peak*100)) : 0;
     f._traffic = { todayIn: todayIn, totalIn: totalIn, congestion: congestion,
-                   hours: hours, days: days, deviceCount: devIds.length };
+                   hours: hours, days: days, deviceCount: devIds.length, spots: spots };
     if(todayIn > 0) f.cong = congestion;
     try{ localStorage.setItem(key, JSON.stringify({t: Date.now(), data: f._traffic})); }catch(e){}
     console.log('[나들이go] 실측(대시보드 동일 소스): ' + f.title + ' 누적 ' + totalIn + ' / 오늘 ' + todayIn);
@@ -7891,6 +7898,47 @@ function buildSubCong(){
     }
   }
 
+  // ── 📍 스팟별 방문 카드 (게이트/지점별 유동인구)
+  let sp = null;
+  const _spots = ((tf && tf.spots) || []).filter(s => (s.totalIn||0) > 0);
+  if(_spots.length >= 2){
+    sp=div('');css(sp,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const sh2=div('');css(sh2,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'16px'});
+    const st2=div('');css(st2,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(st2,'📍 스팟별 방문');
+    const sb2=div('');css(sb2,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});setText(sb2,'지점 계수기 실측');
+    ap(sh2,st2,sb2);
+    sp.appendChild(sh2);
+    const sorted=_spots.slice().sort((a,b)=>(b.totalIn||0)-(a.totalIn||0));
+    const maxT=Math.max(1,...sorted.map(s=>s.totalIn||0));
+    const sumT=sorted.reduce((s,x)=>s+(x.totalIn||0),0);
+    sorted.forEach((s2,si)=>{
+      const row=div('');css(row,{marginBottom:si===sorted.length-1?'0':'14px'});
+      const r1=div('');css(r1,{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'6px'});
+      const nm=div('');css(nm,{fontSize:'13px',fontWeight:'700',color:'#334155',display:'flex',alignItems:'center',gap:'6px'});
+      if(si===0){
+        const crown=document.createElement('span');css(crown,{fontSize:'12px'});setText(crown,'👑');
+        nm.appendChild(crown);
+      }
+      const nmT=document.createElement('span');setText(nmT, s2.name || ('계수기 '+s2.id));
+      nm.appendChild(nmT);
+      const pctS=div('');css(pctS,{fontSize:'12px',fontWeight:'800',color:si===0?'#ef8200':'#94a3b8'});
+      setText(pctS, sumT>0 ? Math.round((s2.totalIn||0)/sumT*100)+'%' : '');
+      ap(r1,nm,pctS);
+      row.appendChild(r1);
+      const rail=div('');css(rail,{height:'7px',background:'#f1f5f9',borderRadius:'9999px',overflow:'hidden',marginBottom:'5px'});
+      const fill=div('');css(fill,{height:'100%',width:Math.max(3,Math.round((s2.totalIn||0)/maxT*100))+'%',
+        borderRadius:'9999px',background:si===0?'#ef8200':'#cbd5e1',transition:'width .5s ease'});
+      rail.appendChild(fill);
+      row.appendChild(rail);
+      const meta=div('');css(meta,{display:'flex',justifyContent:'space-between',fontSize:'11px',color:'#94a3b8'});
+      const m1=div('');setText(m1,'누적 '+(s2.totalIn||0).toLocaleString()+'명');
+      const m2=div('');setText(m2,'오늘 '+(s2.todayIn||0).toLocaleString()+'명');
+      ap(meta,m1,m2);
+      row.appendChild(meta);
+      sp.appendChild(row);
+    });
+  }
+
   // ── 🅿️ 주차 현황 카드 (수집기가 계산한 실측 입·출차 기반)
   let pk = null;
   const _plots = (tf && tf.parking) || [];
@@ -8058,7 +8106,7 @@ function buildSubCong(){
     }
   }
 
-  const _parts=[hero]; if(ms) _parts.push(ms); if(pk) _parts.push(pk);
+  const _parts=[hero]; if(ms) _parts.push(ms); if(sp) _parts.push(sp); if(pk) _parts.push(pk);
   _parts.push(tabWrap,realtimePanel,predictPanel,tip);
   ap.apply(null,[body].concat(_parts));
   switchCongTab(S.congTab||'realtime');
