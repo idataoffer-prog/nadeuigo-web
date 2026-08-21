@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260817A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260817B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7701,6 +7701,21 @@ function buildSubInfo(){
   return modal;
 }
 
+// ── 스팟별 방문 행 탭 → 지도에서 해당 스팟 표시
+function focusSpotOnMap(spotId){
+  try{
+    const ctx=window._spotMapCtx;
+    if(!ctx || !ctx.el || !document.body.contains(ctx.el)) return;
+    const mk=ctx.markers && ctx.markers[spotId];
+    ctx.el.scrollIntoView({behavior:'smooth',block:'center'});
+    if(mk){
+      setTimeout(()=>{
+        try{ ctx.map.panTo(mk.getLatLng()); mk.openPopup(); }catch(e){}
+      },380);
+    }
+  }catch(e){}
+}
+
 // ── 🅿️ 주차 현황 전용 화면
 function buildSubParking(){
   const modal=div(S._back?'modal':'modal slide-right');css(modal,{zIndex:'70'});
@@ -7949,6 +7964,16 @@ function buildSubCong(){
       const m2=div('');setText(m2,'오늘 '+(s2.todayIn||0).toLocaleString()+'명');
       ap(meta,m1,m2);
       row.appendChild(meta);
+      // 좌표가 등록된 스팟은 탭하면 지도에서 위치 표시
+      const g4=(window._vdevGeo||{})[s2.id];
+      if(g4 && g4.lat && g4.lng){
+        css(row,{cursor:'pointer'});
+        const mapHint=document.createElement('span');
+        css(mapHint,{fontSize:'10px',fontWeight:'700',color:'#0f766e',marginLeft:'6px'});
+        setText(mapHint,'📍 지도');
+        nm.appendChild(mapHint);
+        row.onclick=()=>focusSpotOnMap(s2.id);
+      }
       sp.appendChild(row);
     });
   }
@@ -7985,14 +8010,16 @@ function buildSubCong(){
           const map=L.map(el,{scrollWheelZoom:false}).setView([_geo[_geoSpots[0].id].lat,_geo[_geoSpots[0].id].lng],16);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
           const bounds=[];
+          window._spotMapCtx={map:map,el:el,markers:{}};
           _geoSpots.forEach(s=>{
             const g=_geo[s.id];
             const share=(s.totalIn||0)/maxT;
             const col=share>=0.75?'#dc2626':(share>=0.45?'#f59e0b':'#22c55e');
             const r=10+Math.round(share*16);
-            L.circleMarker([g.lat,g.lng],{radius:r,color:col,fillColor:col,fillOpacity:0.55,weight:2})
+            const mk=L.circleMarker([g.lat,g.lng],{radius:r,color:col,fillColor:col,fillOpacity:0.55,weight:2})
               .addTo(map)
               .bindPopup('<b>'+(s.name||g.name||('계수기 '+s.id))+'</b><br>누적 '+(s.totalIn||0).toLocaleString()+'명<br>오늘 '+(s.todayIn||0).toLocaleString()+'명');
+            window._spotMapCtx.markers[s.id]=mk;
             bounds.push([g.lat,g.lng]);
           });
           if(bounds.length>1) map.fitBounds(bounds,{padding:[35,35]});
