@@ -554,6 +554,90 @@ function bindEvents(){
 function debounce(fn, ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
 
 // ─────────────────────────────────────────────────────────────
+// ─── 지도 좌표 픽커 (Leaflet · 클릭으로 위치 지정) ───
+let _leafletReady = null;
+function loadLeafletLib(){
+  if(_leafletReady) return _leafletReady;
+  _leafletReady = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.onload = () => resolve();
+    js.onerror = () => { _leafletReady = null; reject(new Error('지도 로드 실패')); };
+    document.head.appendChild(js);
+  });
+  return _leafletReady;
+}
+function openGeoPicker(title, initLat, initLng, onSave){
+  const old = document.getElementById('geo-overlay'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'geo-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;';
+  const sheet = document.createElement('div');
+  sheet.style.cssText = 'background:#fff;border-radius:16px;padding:18px;width:100%;max-width:560px;';
+  sheet.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <b style="font-size:15px;color:#0f172a">📍 ${escapeHtml(title)}</b>
+      <span style="font-size:12px;color:#94a3b8">지도를 클릭해 위치를 지정하세요</span>
+    </div>
+    <div id="geo-map" style="height:380px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;">지도 불러오는 중...</div>
+    <div style="display:flex;gap:8px;margin-top:12px;align-items:center;">
+      <span id="geo-coord" style="flex:1;font-size:12px;color:#64748b;">${initLat?('현재: '+initLat.toFixed(6)+', '+initLng.toFixed(6)):'아직 지정 안 됨'}</span>
+      <button id="geo-cancel" style="padding:10px 16px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:13px;font-weight:700;cursor:pointer;">취소</button>
+      <button id="geo-save" style="padding:10px 20px;border-radius:10px;border:none;background:#ef8200;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">이 위치로 저장</button>
+    </div>`;
+  ov.appendChild(sheet);
+  document.body.appendChild(ov);
+  let picked = (initLat && initLng) ? {lat:initLat, lng:initLng} : null;
+  document.getElementById('geo-cancel').onclick = () => ov.remove();
+  document.getElementById('geo-save').onclick = () => {
+    if(!picked){ toast('지도를 클릭해 위치를 먼저 지정해주세요', 'error'); return; }
+    ov.remove();
+    onSave(Number(picked.lat.toFixed(6)), Number(picked.lng.toFixed(6)));
+  };
+  loadLeafletLib().then(() => {
+    const box = document.getElementById('geo-map');
+    if(!box) return;
+    box.textContent = '';
+    const center = picked ? [picked.lat, picked.lng] : [36.35, 127.8];
+    const map = L.map('geo-map').setView(center, picked ? 16 : 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19, attribution: '© OpenStreetMap'
+    }).addTo(map);
+    let marker = picked ? L.marker(center).addTo(map) : null;
+    map.on('click', e => {
+      picked = { lat: e.latlng.lat, lng: e.latlng.lng };
+      if(marker) marker.setLatLng(e.latlng); else marker = L.marker(e.latlng).addTo(map);
+      const c = document.getElementById('geo-coord');
+      if(c) c.textContent = '선택: ' + picked.lat.toFixed(6) + ', ' + picked.lng.toFixed(6);
+    });
+    setTimeout(() => map.invalidateSize(), 150);
+  }).catch(() => {
+    const box = document.getElementById('geo-map');
+    if(box) box.textContent = '지도 로드 실패 — 인터넷 연결을 확인해주세요';
+  });
+}
+function pickVDeviceGeo(i){
+  const d = VDEVICES[i];
+  openGeoPicker('계수기 위치: ' + d.id + (d.name ? ' (' + d.name + ')' : ''), d.lat, d.lng, async (lat, lng) => {
+    VDEVICES[i].lat = lat; VDEVICES[i].lng = lng;
+    await saveVDevices();
+    renderVDeviceList();
+    toast('위치가 저장되었습니다');
+  });
+}
+function pickParkingGeo(i){
+  const p = _parkingLots[i];
+  openGeoPicker('주차장 위치: ' + (p.name || '주차장'), p.plat, p.plng, (lat, lng) => {
+    _parkingLots[i].plat = lat; _parkingLots[i].plng = lng;
+    renderParkingLots();
+    toast('위치 지정됨 — 축제 저장 시 반영됩니다');
+  });
+}
+
 // ─── 축제 QR 코드 생성 (찍으면 해당 축제 상세로 직행) ───
 function openQrModal(docId, title){
   const appUrl = 'https://idataoffer-prog.github.io/nadeuigo-web/ktrip.html?festival=' + encodeURIComponent(docId);
@@ -632,6 +716,7 @@ function renderVDeviceList(){
     <div style="display:flex;align-items:center;gap:10px;background:#f8fafc;border-radius:10px;padding:11px 14px;">
       <b style="font-size:13px;color:#0f172a;">${escapeHtml(dv.id)}</b>
       <span style="font-size:12px;color:#94a3b8;flex:1;">${escapeHtml(dv.name||'')}</span>
+      <span onclick="pickVDeviceGeo(${i})" title="지도에서 위치 지정" style="font-size:12px;font-weight:700;cursor:pointer;color:${dv.lat?'#16a34a':'#94a3b8'};">📍 ${dv.lat?'위치 등록됨':'위치'}</span>
       <span onclick="delVDevice(${i})" style="color:#dc2626;font-size:13px;font-weight:700;cursor:pointer;">삭제</span>
     </div>`).join('');
 }
@@ -1176,11 +1261,14 @@ function renderParkingLots(){
   box.innerHTML = _parkingLots.map((p, i) => `
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;background:#f8fafc;border-radius:10px;padding:10px 12px;">
       <input value="${escapeAttr(p.name||'')}" placeholder="주차장 이름 (예: 제1주차장)" onchange="_parkingLots[${i}].name=this.value"
-        style="flex:2;min-width:130px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+        style="flex:2;min-width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
       <input value="${escapeAttr(p.devices||'')}" placeholder="계수기 번호 (쉼표 구분)" onchange="_parkingLots[${i}].devices=this.value"
-        style="flex:2;min-width:130px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+        style="flex:2;min-width:120px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
       <input type="number" value="${p.capacity||''}" placeholder="총 면수" onchange="_parkingLots[${i}].capacity=parseInt(this.value)||0"
-        style="width:90px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+        style="width:80px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+      <input value="${escapeAttr(p.pos||'')}" placeholder="위치 설명 (예: 정문 앞)" onchange="_parkingLots[${i}].pos=this.value"
+        style="flex:2;min-width:110px;padding:9px 12px;border:1.5px solid #e2e8f0;border-radius:9px;font-size:13px;font-family:inherit;outline:none">
+      <span onclick="pickParkingGeo(${i})" title="지도에서 위치 지정" style="font-size:12px;font-weight:700;cursor:pointer;color:${p.plat?'#16a34a':'#94a3b8'};white-space:nowrap;">📍 ${p.plat?'등록됨':'위치'}</span>
       <span onclick="_parkingLots.splice(${i},1);renderParkingLots()" style="color:#dc2626;font-size:12px;font-weight:700;cursor:pointer;">삭제</span>
     </div>`).join('');
 }
@@ -3101,7 +3189,8 @@ async function saveEdit(docId){
     rating: parseFloat(g('rating').value) || 4.5,
     idata: g('idata').checked,
     parkingLots: _parkingLots.filter(p => p.name && p.name.trim() && p.devices && p.devices.trim())
-      .map(p => ({name: p.name.trim(), devices: p.devices.trim(), capacity: p.capacity||0})),
+      .map(p => ({name: p.name.trim(), devices: p.devices.trim(), capacity: p.capacity||0,
+                  pos: (p.pos||'').trim(), plat: p.plat||null, plng: p.plng||null})),
     vestorDevice: (document.querySelectorAll('.m-vestor-chk').length
       ? Array.from(document.querySelectorAll('.m-vestor-chk:checked')).map(c => c.value).join(',')
       : (f.vestorDevice || '')), // 장비 목록 미등록 상태에선 기존 연결 보존

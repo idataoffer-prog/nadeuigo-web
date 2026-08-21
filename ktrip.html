@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260813D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260817A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7746,12 +7746,26 @@ function buildSubParking(){
 
       const card=div('');css(card,{background:'#fff',margin:'12px 16px 0',padding:'20px',borderRadius:'16px',
         border:'1px solid #f1f5f9',boxShadow:'0 1px 5px rgba(0,0,0,.04)'});
-      const r1=div('');css(r1,{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'12px'});
+      const r1=div('');css(r1,{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:cfg.pos?'4px':'12px'});
       const nm=div('');css(nm,{fontSize:'15px',fontWeight:'800',color:'#111'});setText(nm,cfg.name);
       const stt=div('');css(stt,{fontSize:'12px',fontWeight:'800',color:state[1],background:state[1]+'14',padding:'4px 10px',borderRadius:'9999px'});
       setText(stt,state[0]);
       ap(r1,nm,stt);
       card.appendChild(r1);
+      if(cfg.pos || (cfg.plat && cfg.plng)){
+        const posRow=div('');css(posRow,{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'});
+        const posT=div('');css(posT,{fontSize:'12px',color:'#94a3b8'});setText(posT,cfg.pos?('📍 '+cfg.pos):'');
+        posRow.appendChild(posT);
+        if(cfg.plat && cfg.plng){
+          const navB=document.createElement('a');
+          navB.href='https://map.kakao.com/link/to/'+encodeURIComponent(cfg.name||'주차장')+','+cfg.plat+','+cfg.plng;
+          navB.target='_blank';
+          css(navB,{fontSize:'12px',fontWeight:'800',color:'#0f766e',textDecoration:'none',background:'#f0fdfa',padding:'5px 11px',borderRadius:'9999px',flexShrink:'0'});
+          setText(navB,'🧭 길찾기');
+          posRow.appendChild(navB);
+        }
+        card.appendChild(posRow);
+      }
 
       if(occ!=null&&cap>0){
         const bigRow=div('');css(bigRow,{display:'flex',alignItems:'baseline',gap:'6px',marginBottom:'12px'});
@@ -7939,6 +7953,58 @@ function buildSubCong(){
     });
   }
 
+  // ── 🗺 스팟 지도 카드 (좌표 등록된 계수기 → 위치별 혼잡 표시)
+  let mp = null;
+  const _geo = window._vdevGeo || {};
+  const _geoSpots = _spots.filter(s => _geo[s.id] && _geo[s.id].lat && _geo[s.id].lng);
+  if(_geoSpots.length >= 1){
+    mp=div('');css(mp,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const mh2=div('');css(mh2,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'14px'});
+    const mt2=div('');css(mt2,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(mt2,'🗺 스팟 지도');
+    const mb2=div('');css(mb2,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});setText(mb2,'원이 클수록 방문 많음');
+    ap(mh2,mt2,mb2);
+    mp.appendChild(mh2);
+    const mapBox=div('');
+    mapBox.id='spot-map-'+Date.now();
+    css(mapBox,{height:'250px',borderRadius:'14px',background:'#f1f5f9',overflow:'hidden'});
+    mp.appendChild(mapBox);
+    const mLegend=div('');css(mLegend,{display:'flex',gap:'12px',marginTop:'10px'});
+    [['#dc2626','혼잡'],['#f59e0b','보통'],['#22c55e','여유']].forEach(([col,lb])=>{
+      const li=div('');css(li,{display:'flex',alignItems:'center',gap:'4px',fontSize:'10px',color:'#94a3b8'});
+      const dot=div('');css(dot,{width:'8px',height:'8px',borderRadius:'50%',background:col});
+      ap(li,dot,lb); mLegend.appendChild(li);
+    });
+    mp.appendChild(mLegend);
+    // Leaflet 초기화 (모달이 DOM에 붙은 뒤)
+    setTimeout(()=>{
+      const el=document.getElementById(mapBox.id);
+      if(!el) return;
+      loadLeaflet().then(()=>{
+        try{
+          const maxT=Math.max(1,..._geoSpots.map(s=>s.totalIn||0));
+          const map=L.map(el,{scrollWheelZoom:false}).setView([_geo[_geoSpots[0].id].lat,_geo[_geoSpots[0].id].lng],16);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+          const bounds=[];
+          _geoSpots.forEach(s=>{
+            const g=_geo[s.id];
+            const share=(s.totalIn||0)/maxT;
+            const col=share>=0.75?'#dc2626':(share>=0.45?'#f59e0b':'#22c55e');
+            const r=10+Math.round(share*16);
+            L.circleMarker([g.lat,g.lng],{radius:r,color:col,fillColor:col,fillOpacity:0.55,weight:2})
+              .addTo(map)
+              .bindPopup('<b>'+(s.name||g.name||('계수기 '+s.id))+'</b><br>누적 '+(s.totalIn||0).toLocaleString()+'명<br>오늘 '+(s.todayIn||0).toLocaleString()+'명');
+            bounds.push([g.lat,g.lng]);
+          });
+          if(bounds.length>1) map.fitBounds(bounds,{padding:[35,35]});
+          setTimeout(()=>map.invalidateSize(),200);
+        }catch(e){}
+      }).catch(()=>{
+        el.textContent='지도를 불러오지 못했어요';
+        css(el,{display:'flex',alignItems:'center',justifyContent:'center',color:'#94a3b8',fontSize:'12px'});
+      });
+    },80);
+  }
+
   // ── 🅿️ 주차 현황 카드 (수집기가 계산한 실측 입·출차 기반)
   let pk = null;
   const _plots = (tf && tf.parking) || [];
@@ -8106,7 +8172,7 @@ function buildSubCong(){
     }
   }
 
-  const _parts=[hero]; if(ms) _parts.push(ms); if(sp) _parts.push(sp); if(pk) _parts.push(pk);
+  const _parts=[hero]; if(ms) _parts.push(ms); if(sp) _parts.push(sp); if(mp) _parts.push(mp); if(pk) _parts.push(pk);
   _parts.push(tabWrap,realtimePanel,predictPanel,tip);
   ap.apply(null,[body].concat(_parts));
   switchCongTab(S.congTab||'realtime');
@@ -11437,6 +11503,37 @@ async function loadWeeklyViews(){
   }
 }
 
+// ── 장비 좌표 로드 (스팟 지도용) + Leaflet 지연 로더
+async function loadVDevGeo(){
+  try{
+    if(window._vdevGeo || !db) return;
+    const doc = await db.collection('settings').doc('vestorDevices').get();
+    window._vdevGeo = {};
+    if(doc.exists && Array.isArray(doc.data().list)){
+      doc.data().list.forEach(d => {
+        if(d && d.id) window._vdevGeo[d.id] = { name: d.name||'', lat: d.lat||null, lng: d.lng||null };
+      });
+    }
+  }catch(e){ window._vdevGeo = window._vdevGeo || {}; }
+}
+let _leafletP = null;
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(_leafletP) return _leafletP;
+  _leafletP = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const js = document.createElement('script');
+    js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.onload = () => resolve();
+    js.onerror = () => { _leafletP = null; reject(new Error('x')); };
+    document.head.appendChild(js);
+  });
+  return _leafletP;
+}
+
 // ── QR/링크 딥링크: ktrip.html?festival=문서ID (또는 숫자 id·제목) → 해당 축제 상세 바로 열기
 function applyDeepLink(){
   try{
@@ -11470,6 +11567,7 @@ async function loadFestivalsFromFirestore(){
     S.festivals = festivals;
     console.log('[나들이go] Firestore에서', festivals.length, '개 로드');
     applyDeepLink(); // QR/링크로 특정 축제 직행
+    loadVDevGeo();   // 스팟 지도용 좌표 (비동기, 대기 안 함)
     return true;
   }catch(err){
     console.error('[나들이go] Firestore 로드 실패:', err.message);
