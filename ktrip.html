@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260817B';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260817C';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -8016,7 +8016,12 @@ function buildSubCong(){
             const share=(s.totalIn||0)/maxT;
             const col=share>=0.75?'#dc2626':(share>=0.45?'#f59e0b':'#22c55e');
             const r=10+Math.round(share*16);
-            const mk=L.circleMarker([g.lat,g.lng],{radius:r,color:col,fillColor:col,fillOpacity:0.55,weight:2})
+            // 히트맵 스타일 발광 마커 (중심 진하고 바깥으로 퍼짐)
+            const px=Math.round(44+share*56); // 방문 많을수록 큰 번짐 (44~100px)
+            const glow='<div style="width:'+px+'px;height:'+px+'px;border-radius:50%;'
+              +'background:radial-gradient(circle, '+col+'E6 0%, '+col+'B3 22%, '+col+'66 45%, '+col+'26 65%, transparent 78%);'
+              +'"></div>';
+            const mk=L.marker([g.lat,g.lng],{icon:L.divIcon({className:'',html:glow,iconSize:[px,px],iconAnchor:[px/2,px/2]})})
               .addTo(map)
               .bindPopup('<b>'+(s.name||g.name||('계수기 '+s.id))+'</b><br>누적 '+(s.totalIn||0).toLocaleString()+'명<br>오늘 '+(s.todayIn||0).toLocaleString()+'명');
             window._spotMapCtx.markers[s.id]=mk;
