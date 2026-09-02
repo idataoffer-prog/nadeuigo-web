@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260817C';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260817D';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7986,7 +7986,9 @@ function buildSubCong(){
     mp=div('');css(mp,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
     const mh2=div('');css(mh2,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'14px'});
     const mt2=div('');css(mt2,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(mt2,'🗺 스팟 지도');
-    const mb2=div('');css(mb2,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});setText(mb2,'원이 클수록 방문 많음');
+    const _useToday=_geoSpots.some(s3=>(s3.todayIn||0)>0);
+    const mb2=div('');css(mb2,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});
+    setText(mb2,_useToday?'지금 몰림 · 오늘 방문 기준':'누적 방문 기준');
     ap(mh2,mt2,mb2);
     mp.appendChild(mh2);
     const mapBox=div('');
@@ -8006,14 +8008,15 @@ function buildSubCong(){
       if(!el) return;
       loadLeaflet().then(()=>{
         try{
-          const maxT=Math.max(1,..._geoSpots.map(s=>s.totalIn||0));
+          const _metric=s0=>_useToday?(s0.todayIn||0):(s0.totalIn||0);
+          const maxT=Math.max(1,..._geoSpots.map(_metric));
           const map=L.map(el,{scrollWheelZoom:false}).setView([_geo[_geoSpots[0].id].lat,_geo[_geoSpots[0].id].lng],16);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
           const bounds=[];
           window._spotMapCtx={map:map,el:el,markers:{}};
           _geoSpots.forEach(s=>{
             const g=_geo[s.id];
-            const share=(s.totalIn||0)/maxT;
+            const share=_metric(s)/maxT;
             const col=share>=0.75?'#dc2626':(share>=0.45?'#f59e0b':'#22c55e');
             const r=10+Math.round(share*16);
             // 히트맵 스타일 발광 마커 (중심 진하고 바깥으로 퍼짐)
