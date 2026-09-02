@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260817D';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260817E';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -7982,7 +7982,15 @@ function buildSubCong(){
   let mp = null;
   const _geo = window._vdevGeo || {};
   const _geoSpots = _spots.filter(s => _geo[s.id] && _geo[s.id].lat && _geo[s.id].lng);
-  if(_geoSpots.length >= 1){
+  if(_geoSpots.length < 1 && _spots.length >= 1){
+    // 스팟 데이터는 있는데 좌표 미등록 → 안내
+    mp=div('');css(mp,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const gh=div('');css(gh,{fontSize:'16px',fontWeight:'800',color:'#111',marginBottom:'8px'});setText(gh,'🗺 스팟 지도');
+    const gt=div('');css(gt,{fontSize:'12px',color:'#94a3b8',lineHeight:'1.6'});
+    setText(gt,'계수기 위치를 등록하면 실제 지도 위에 스팟별 몰림 정도가 표시돼요. 관리자 페이지 → ⚡ 장비 관리 → 각 계수기의 📍 위치를 지도에서 지정해주세요.');
+    ap(mp,gh,gt);
+  }
+  else if(_geoSpots.length >= 1){
     mp=div('');css(mp,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
     const mh2=div('');css(mh2,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'14px'});
     const mt2=div('');css(mt2,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(mt2,'🗺 스팟 지도');
@@ -8019,11 +8027,17 @@ function buildSubCong(){
             const share=_metric(s)/maxT;
             const col=share>=0.75?'#dc2626':(share>=0.45?'#f59e0b':'#22c55e');
             const r=10+Math.round(share*16);
-            // 히트맵 스타일 발광 마커 (중심 진하고 바깥으로 퍼짐)
-            const px=Math.round(44+share*56); // 방문 많을수록 큰 번짐 (44~100px)
-            const glow='<div style="width:'+px+'px;height:'+px+'px;border-radius:50%;'
-              +'background:radial-gradient(circle, '+col+'E6 0%, '+col+'B3 22%, '+col+'66 45%, '+col+'26 65%, transparent 78%);'
-              +'"></div>';
+            // 히트맵 스타일 발광 마커 + 인구수 라벨
+            const px=Math.round(48+share*56); // 방문 많을수록 큰 번짐 (48~104px)
+            const mv=_metric(s);
+            const lbl=mv>=10000?((mv/10000).toFixed(mv>=100000?0:1)+'만'):mv.toLocaleString();
+            const glow='<div style="position:relative;width:'+px+'px;height:'+px+'px;">'
+              +'<div style="position:absolute;inset:0;border-radius:50%;'
+              +'background:radial-gradient(circle, '+col+'E6 0%, '+col+'B3 22%, '+col+'66 45%, '+col+'26 65%, transparent 78%);"></div>'
+              +'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
+              +'font-weight:900;font-size:'+(share>=0.7?'13':'11')+'px;color:#0f172a;'
+              +'text-shadow:0 1px 2px #fff,0 -1px 2px #fff,1px 0 2px #fff,-1px 0 2px #fff;">'+lbl+'</div>'
+              +'</div>';
             const mk=L.marker([g.lat,g.lng],{icon:L.divIcon({className:'',html:glow,iconSize:[px,px],iconAnchor:[px/2,px/2]})})
               .addTo(map)
               .bindPopup('<b>'+(s.name||g.name||('계수기 '+s.id))+'</b><br>누적 '+(s.totalIn||0).toLocaleString()+'명<br>오늘 '+(s.todayIn||0).toLocaleString()+'명');
