@@ -629,6 +629,14 @@ function pickVDeviceGeo(i){
     toast('위치가 저장되었습니다');
   });
 }
+function pickAmenityGeo(i){
+  const a = _amenityItems[i];
+  openGeoPicker('시설 위치: ' + (a.icon||'') + ' ' + (a.label||'시설'), a.lat, a.lng, (lat, lng) => {
+    _amenityItems[i].lat = lat; _amenityItems[i].lng = lng;
+    renderAmenityList(_amenityItems);
+    toast('위치 지정됨 — 축제 저장 시 반영됩니다');
+  });
+}
 function pickParkingGeo(i){
   const p = _parkingLots[i];
   openGeoPicker('주차장 위치: ' + (p.name || '주차장'), p.plat, p.plng, (lat, lng) => {
@@ -1247,6 +1255,45 @@ function openEdit(docId){
   const safetyTipEl = document.getElementById('m-safety-tip');
   if(safetyTipEl) safetyTipEl.value = f.safetyTip || '';
   buildEditSectionNav(); // 섹션 바로가기 칩 생성
+  makeSectionsCollapsible(); // 섹션 접이식 (기본정보만 펼침)
+}
+
+// ─── 편집 모달 섹션 접이식 (아코디언) ───
+function makeSectionsCollapsible(){
+  try{
+    const secs = Array.from(document.querySelectorAll('.modal-body .form-section'));
+    secs.forEach((sec, idx) => {
+      const title = sec.querySelector('.section-title');
+      if(!title || sec.dataset.acc) return;
+      sec.dataset.acc = '1';
+      // 제목 뒤 내용들을 sec-body로 감싸기
+      const body = document.createElement('div');
+      body.className = 'sec-body';
+      while(title.nextSibling) body.appendChild(title.nextSibling);
+      sec.appendChild(body);
+      // 화살표 표시
+      const arrow = document.createElement('span');
+      arrow.className = 'sec-arrow';
+      arrow.textContent = '▾';
+      arrow.style.cssText = 'margin-left:auto;font-size:13px;color:#94a3b8;transition:transform .2s;';
+      title.appendChild(arrow);
+      title.style.cursor = 'pointer';
+      title.style.display = 'flex';
+      title.style.alignItems = 'center';
+      const setOpen = (open) => {
+        body.style.display = open ? '' : 'none';
+        arrow.style.transform = open ? '' : 'rotate(-90deg)';
+        sec.dataset.open = open ? '1' : '';
+      };
+      // 기본: 첫 섹션(기본 정보)만 펼침
+      setOpen(idx === 0);
+      title.addEventListener('click', (e) => {
+        if(e.target.closest('button')) return; // "+ 추가" 버튼은 토글 제외
+        setOpen(!sec.dataset.open);
+      });
+      sec._setOpen = setOpen;
+    });
+  }catch(e){}
 }
 
 // ─── 주차장 관리 (실측 만차 현황) ───
@@ -1310,7 +1357,10 @@ function buildEditSectionNav(){
         + 'background:#fffbeb;color:#92600a;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;';
       chip.onclick = () => {
         const el = document.getElementById(c.id);
-        if(el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if(!el) return;
+        const sec = el.closest('.form-section');
+        if(sec && sec._setOpen) sec._setOpen(true); // 접혀있으면 펼치고
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
       nav.appendChild(chip);
     });
@@ -1921,6 +1971,10 @@ function renderAmenityList(items){
       <div class="row">
         <div class="lbl">위치/설명</div>
         <input type="text" placeholder="예: 무대 뒤편 / 정문 우측 2곳" value="${escapeAttr(it.desc||'')}" oninput="updateAmenityItem(${i},'desc',this.value)">
+      </div>
+      <div class="row">
+        <div class="lbl">지도 위치</div>
+        <button type="button" onclick="pickAmenityGeo(${i})" style="padding:7px 14px;border-radius:8px;border:1.5px solid ${it.lat?'#16a34a':'#e2e8f0'};background:${it.lat?'#f0fdf4':'#fff'};color:${it.lat?'#16a34a':'#64748b'};font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📍 ${it.lat?'위치 등록됨 (변경)':'지도에서 위치 지정'}</button>
       </div>
       <div class="row">
         <div class="lbl">위도 (lat)</div>
