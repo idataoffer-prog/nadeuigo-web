@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260818A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260923A';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -2310,7 +2310,13 @@ function buildHome(){
       if(r.start > _today) return 1e12 + (r.start - _today);                     // 예정 (가까운 순)
       return 5e12 + (_today - r.end);                                            // 종료 (최근 순)
     };
-    [...S.festivals].sort((a,b)=>_liveKey(a)-_liveKey(b)).slice(0,6).forEach(f=>{
+    // 종료된 축제는 '지금 진행 중'에서 제외
+    const _liveList = S.festivals.filter(f=>{
+      const r = parseFestivalRange(f);
+      return !r || r.end >= _today;
+    });
+    if(_liveList.length === 0) css(sec1,{display:'none'});
+    _liveList.sort((a,b)=>_liveKey(a)-_liveKey(b)).slice(0,6).forEach(f=>{
       const isVestor = f.idata === true;
       const card=div('live-card' + (isVestor ? ' vestor-official' : ''));card.onclick=()=>openDetail(f);
       const im=el('img','');im.src=f.img;im.alt=f.title;
@@ -2805,7 +2811,17 @@ function buildHome(){
       {bg:'#f0fdf4', ring:'#bbf7d0'}, // 초록
       {bg:'#f8fafc', ring:'#e2e8f0'}, // 회색
     ];
-    THEMES.forEach((t, ti)=>{
+    // 실제로 해당하는 축제가 1개 이상 있는 테마만 표시 (빈 테마 자동 숨김)
+    const _themeHasFest = t => {
+      const kws=(t.tags||[t.n]).map(x=>String(x).toLowerCase());
+      return S.festivals.some(f=>{
+        const hay=((f.title||'')+(f.tag||'')+(f.loc||'')+((f.tags||[]).join(''))).toLowerCase();
+        return kws.some(k=>hay.includes(k));
+      });
+    };
+    let _visTHemes = THEMES.filter(_themeHasFest);
+    if(_visTHemes.length === 0) _visTHemes = THEMES; // 데이터 없을 땐 전체 유지
+    _visTHemes.forEach((t, ti)=>{
       const pal = themePalette[ti % themePalette.length];
       const card=div('');css(card,{
         borderRadius:'18px',overflow:'hidden',
@@ -11736,6 +11752,16 @@ async function loadFestivalsFromFirestore(){
       return true;
     }
     const festivals = snap.docs.map(fsToFestival);
+    // 전역 정렬: ① 진행 중(곧 끝나는 순) ② 예정(가까운 순) ③ 종료(최근 순, 맨 뒤로)
+    const _t0 = new Date(); _t0.setHours(0,0,0,0);
+    const _ordKey = f => {
+      const r = parseFestivalRange(f);
+      if(!r) return 2e12;
+      if(r.start <= _t0 && _t0 <= r.end) return (r.end - _t0);
+      if(r.start > _t0) return 1e12 + (r.start - _t0);
+      return 8e12 + (_t0 - r.end);
+    };
+    festivals.sort((a,b)=>_ordKey(a)-_ordKey(b));
     S.festivals = festivals;
     console.log('[나들이go] Firestore에서', festivals.length, '개 로드');
     applyDeepLink(); // QR/링크로 특정 축제 직행
