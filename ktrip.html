@@ -745,7 +745,7 @@ body{display:flex;align-items:center;justify-content:center;}
    GitHub에 새 파일을 올리면 앱이 옛 캐시를 쓰고 있어도
    자동으로 최신 버전을 감지해서 새로고침합니다. */
 (function(){
-  var KTRIP_BUILD = 'KTRIP_BUILD:20260923A';
+  var KTRIP_BUILD = 'KTRIP_BUILD:20260923B';
   try{
     // 이미 새 버전으로 리로드된 경우 무한루프 방지
     var params = new URLSearchParams(location.search);
@@ -8064,6 +8064,24 @@ function buildSubCong(){
     }
   }
 
+  // ── 미연동 축제: 방문 현황 기본 카드 (모든 축제 동일한 화면 틀)
+  let pre = null;
+  if(!_hasTf){
+    pre=div('');css(pre,{background:'#fff',padding:'24px 20px',borderBottom:'8px solid #f2f3f5'});
+    const ph0=div('');css(ph0,{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:'14px'});
+    const pt0=div('');css(pt0,{fontSize:'16px',fontWeight:'800',color:'#111',letterSpacing:'-0.3px'});setText(pt0,'방문 현황');
+    const pb0=div('');css(pb0,{fontSize:'11px',fontWeight:'600',color:'#94a3b8'});setText(pb0,'스마트카운터 실측');
+    ap(ph0,pt0,pb0);
+    const box0=div('');css(box0,{background:'#f8fafc',borderRadius:'14px',padding:'22px 18px',textAlign:'center'});
+    const ic0=div('');css(ic0,{fontSize:'26px',marginBottom:'8px'});setText(ic0,'📡');
+    const tt0=div('');css(tt0,{fontSize:'14px',fontWeight:'800',color:'#334155',marginBottom:'6px'});
+    setText(tt0,'실시간 집계 준비 중');
+    const ds0=div('');css(ds0,{fontSize:'12px',color:'#94a3b8',lineHeight:'1.65'});
+    setText(ds0,'스마트카운터가 설치되면 이 축제도 실시간 방문객 수, 스팟별 몰림 정도, 주차 현황이 제공됩니다');
+    ap(box0,ic0,tt0,ds0);
+    ap(pre,ph0,box0);
+  }
+
   // ── 📍 스팟별 방문 카드 (게이트/지점별 유동인구)
   let sp = null;
   const _spots = ((tf && tf.spots) || []).filter(s => (s.totalIn||0) > 0);
@@ -8358,7 +8376,7 @@ function buildSubCong(){
     }
   }
 
-  const _parts=[hero]; if(ms) _parts.push(ms); if(sp) _parts.push(sp); if(mp) _parts.push(mp); if(pk) _parts.push(pk);
+  const _parts=[hero]; if(ms) _parts.push(ms); else if(pre) _parts.push(pre); if(sp) _parts.push(sp); if(mp) _parts.push(mp); if(pk) _parts.push(pk);
   _parts.push(tabWrap,realtimePanel,predictPanel,tip);
   ap.apply(null,[body].concat(_parts));
   switchCongTab(S.congTab||'realtime');
